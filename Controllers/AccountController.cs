@@ -1,0 +1,30 @@
+using API.Models.Dto;
+using API.Services;
+using Microsoft.AspNetCore.Mvc;
+
+namespace API.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class AccountController(IAccountService accountService) : ControllerBase
+{
+    [HttpPost("register")]
+    public async Task<ActionResult<object>> Register([FromBody] RegisterDto dto, CancellationToken ct)
+    {
+        var result = await accountService.RegisterAsync(dto, ct);
+        if (result == null)
+            return BadRequest("Username or email already exists, or you must be 18+");
+
+        return Ok(new { result.Value.User, Token = result.Value.Token });
+    }
+
+    [HttpPost("login")]
+    public async Task<ActionResult<object>> Login([FromBody] LoginDto dto, CancellationToken ct)
+    {
+        var result = await accountService.LoginAsync(dto, ct);
+        if (result == null)
+            return Unauthorized("Invalid username or password");
+
+        return Ok(new { result.Value.User, Token = result.Value.Token });
+    }
+}
