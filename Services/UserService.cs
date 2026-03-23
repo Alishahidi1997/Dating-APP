@@ -8,7 +8,8 @@ public class UserService(IUserRepository userRepo) : IUserService
 {
     public async Task<UserDto?> GetUserAsync(string username, CancellationToken ct = default)
     {
-        var user = await userRepo.GetUserByUsernameWithPhotosAsync(username, ct);
+        if (string.IsNullOrWhiteSpace(username)) return null;
+        var user = await userRepo.GetUserByUsernameWithPhotosAsync(username.ToLowerInvariant(), ct);
         return user == null ? null : MapToUserDto(user);
     }
 
