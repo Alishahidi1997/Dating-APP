@@ -37,7 +37,7 @@ public class UserRepository(AppDbContext context) : IUserRepository
 
     public async Task<PagedResultDto<AppUser>> GetUsersForDiscoveryAsync(int userId, UserParams userParams, CancellationToken ct = default)
     {
-        var minDob = DateOnly.FromDateTime(DateTime.Today.AddYears(-userParams.MaxAge - 1));
+        var minDob = DateOnly.FromDateTime(DateTime.Today.AddYears(-userParams.MaxAge));
         var maxDob = DateOnly.FromDateTime(DateTime.Today.AddYears(-userParams.MinAge));
 
         var query = context.Users
