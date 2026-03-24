@@ -1,5 +1,7 @@
+using System.Security.Claims;
 using API.Models.Dto;
 using API.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace API.Controllers;
@@ -26,5 +28,19 @@ public class AccountController(IAccountService accountService) : ControllerBase
             return Unauthorized("Invalid username or password");
 
         return Ok(new { result.Value.User, Token = result.Value.Token });
+    }
+
+    [Authorize]
+    [HttpDelete]
+    public async Task<ActionResult> DeleteAccount(CancellationToken ct)
+    {
+        var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!int.TryParse(userIdClaim, out var userId))
+            return Unauthorized();
+
+        if (!await accountService.DeleteAccountAsync(userId, ct))
+            return NotFound("User account not found");
+
+        return NoContent();
     }
 }

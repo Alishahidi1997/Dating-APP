@@ -7,6 +7,7 @@ namespace API.Data;
 public class UserRepository(AppDbContext context) : IUserRepository
 {
     public void Add(AppUser user) => context.Users.Add(user);
+    public void Delete(AppUser user) => context.Users.Remove(user);
     public void Update(AppUser user) => context.Entry(user).State = EntityState.Modified;
 
     public async Task<bool> SaveAllAsync(CancellationToken ct = default) =>

@@ -89,7 +89,7 @@ Edit `appsettings.json` or `appsettings.Development.json`:
 | Setting | Description |
 |---------|-------------|
 | `ConnectionStrings:DefaultConnection` | SQLite connection string (default: `Data Source=datingapp.db`) |
-| `TokenKey` | Secret key for JWT signing (must be 32+ characters in production) |
+| `TokenKey` | Secret key for JWT signing (must be 64+ characters for HMAC-SHA512) |
 
 Example for production:
 
@@ -98,7 +98,7 @@ Example for production:
   "ConnectionStrings": {
     "DefaultConnection": "Data Source=production.db"
   },
-  "TokenKey": "your-production-secret-at-least-32-characters-long"
+  "TokenKey": "your-production-secret-at-least-64-characters-for-hmac-sha512"
 }
 ```
 
@@ -166,6 +166,7 @@ Content-Type: application/json
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| DELETE | `/account` | Delete currently logged-in account |
 | GET | `/users/discovery` | Discovery feed (query: `gender`, `minAge`, `maxAge`, `pageNumber`, `pageSize`, `orderBy`) |
 | GET | `/users/{username}` | Get user profile |
 | PUT | `/users` | Update own profile |
@@ -181,6 +182,8 @@ Content-Type: application/json
 | GET | `/messages/thread/{recipientId}` | Get message thread |
 | DELETE | `/messages/{id}` | Delete message |
 | PUT | `/messages/{id}/read` | Mark as read |
+
+`DELETE /account` requires a valid bearer token and deletes the authenticated user account.
 
 ---
 

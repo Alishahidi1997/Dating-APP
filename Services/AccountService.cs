@@ -56,6 +56,15 @@ public class AccountService(IUserRepository userRepo, ITokenService tokenService
         return (MapToUserDto(user), tokenService.CreateToken(user));
     }
 
+    public async Task<bool> DeleteAccountAsync(int userId, CancellationToken ct = default)
+    {
+        var user = await userRepo.GetUserByIdAsync(userId, ct);
+        if (user == null) return false;
+
+        userRepo.Delete(user);
+        return await userRepo.SaveAllAsync(ct);
+    }
+
     private static UserDto MapToUserDto(AppUser user)
     {
         var photos = user.Photos ?? [];

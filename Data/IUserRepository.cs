@@ -6,6 +6,7 @@ namespace API.Data;
 public interface IUserRepository
 {
     void Add(AppUser user);
+    void Delete(AppUser user);
     void Update(AppUser user);
     Task<bool> SaveAllAsync(CancellationToken ct = default);
     Task<IEnumerable<AppUser>> GetUsersAsync(CancellationToken ct = default);
