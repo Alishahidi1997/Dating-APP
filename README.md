@@ -90,6 +90,17 @@ Edit `appsettings.json` or `appsettings.Development.json`:
 |---------|-------------|
 | `ConnectionStrings:DefaultConnection` | SQLite connection string (default: `Data Source=datingapp.db`) |
 | `TokenKey` | Secret key for JWT signing (must be 64+ characters for HMAC-SHA512) |
+| `AdminUserNames` | Comma-separated usernames that receive the `Admin` role in JWT (optional; case-insensitive) |
+
+**Admin access:** Users with `Users.IsAdmin = 1` in the database also receive the `Admin` role. After changing `IsAdmin` or `AdminUserNames`, log in again so a new JWT includes the role.
+
+Example:
+
+```json
+{
+  "AdminUserNames": "admin,support"
+}
+```
 
 Example for production:
 
@@ -168,6 +179,7 @@ Content-Type: application/json
 |--------|----------|-------------|
 | DELETE | `/account` | Delete currently logged-in account |
 | GET | `/users/discovery` | Discovery feed (query: `gender`, `minAge`, `maxAge`, `pageNumber`, `pageSize`, `orderBy`) |
+| GET | `/users/all` | **Admin only.** List all users (same shape as profile DTOs; not paginated). Requires JWT with role `Admin`. |
 | GET | `/users/{username}` | Get user profile |
 | PUT | `/users` | Update own profile |
 | GET | `/users/matches` | Mutual matches |

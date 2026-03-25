@@ -44,6 +44,12 @@ public class UserService(IUserRepository userRepo) : IUserService
         return new PagedResultDto<UserDto>(dtos, result.TotalCount, result.PageNumber, result.PageSize);
     }
 
+    public async Task<IEnumerable<UserDto>> GetAllUsersAsync(CancellationToken ct = default)
+    {
+        var users = await userRepo.GetUsersAsync(ct);
+        return users.Select(MapToUserDto).ToList();
+    }
+
     public async Task<IEnumerable<UserDto>> GetLikedUsersAsync(int userId, string predicate, CancellationToken ct = default)
     {
         var users = await userRepo.GetLikedUsersAsync(userId, predicate, ct);

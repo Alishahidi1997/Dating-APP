@@ -20,6 +20,9 @@ public class TokenService(IConfiguration config) : ITokenService
             new(ClaimTypes.Name, user.UserName)
         };
 
+        if (IsAdminUser(user))
+            claims.Add(new Claim(ClaimTypes.Role, "Admin"));
+
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(claims),
@@ -30,5 +33,15 @@ public class TokenService(IConfiguration config) : ITokenService
         var tokenHandler = new JwtSecurityTokenHandler();
         var token = tokenHandler.CreateToken(tokenDescriptor);
         return tokenHandler.WriteToken(token);
+    }
+
+    private bool IsAdminUser(AppUser user)
+    {
+        if (user.IsAdmin) return true;
+        var names = config["AdminUserNames"];
+        if (string.IsNullOrWhiteSpace(names)) return false;
+        var allowed = names.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(s => s.ToLowerInvariant());
+        return allowed.Contains(user.UserName.ToLowerInvariant());
     }
 }

@@ -21,6 +21,11 @@ public class UsersController(IUserService userService) : ControllerBase
     public async Task<ActionResult<PagedResultDto<UserDto>>> GetDiscovery([FromQuery] UserParams userParams, CancellationToken ct) =>
         Ok(await userService.GetUsersForDiscoveryAsync(UserId, userParams, ct));
 
+    [Authorize(Roles = "Admin")]
+    [HttpGet("all")]
+    public async Task<ActionResult<IEnumerable<UserDto>>> GetAllUsers(CancellationToken ct) =>
+        Ok(await userService.GetAllUsersAsync(ct));
+
     [HttpGet("matches")]
     public async Task<ActionResult<IEnumerable<UserDto>>> GetMatches(CancellationToken ct) =>
         Ok(await userService.GetMatchesAsync(UserId, ct));
