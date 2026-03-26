@@ -42,6 +42,12 @@ A RESTful dating app backend built with .NET. Supports registration, authenticat
 - Soft delete (per-user)
 - Mark messages as read
 
+### Admin
+- **`GET /api/users/all`** – List every user (admin-only; returns `403` if the JWT does not include role `Admin`)
+- **Who is an admin?**
+  - Usernames listed in `AdminUserNames` (comma-separated in config) get the `Admin` role on login/register.
+  - Or set `IsAdmin = 1` on the `Users` row in SQLite; log in again for a new token with the role.
+
 ---
 
 ## Prerequisites
@@ -197,6 +203,28 @@ Content-Type: application/json
 
 `DELETE /account` requires a valid bearer token and deletes the authenticated user account.
 
+### Admin: list all users
+
+Requires `Authorization: Bearer <token>` where the token was issued for a user with role **`Admin`**. Non-admin users receive **403 Forbidden**.
+
+```http
+GET /api/users/all
+Authorization: Bearer <token>
+```
+
+**Example (cURL):**
+
+```bash
+curl -X GET "https://localhost:5001/api/users/all" \
+  -H "Authorization: Bearer ADMIN_JWT_TOKEN"
+```
+
+**Promote a user to admin in SQLite (then log in again):**
+
+```sql
+UPDATE Users SET IsAdmin = 1 WHERE UserName = 'youradmin';
+```
+
 ---
 
 ## Project Structure
@@ -265,6 +293,10 @@ curl -X POST https://localhost:5001/api/account/login \
 # Get discovery (replace TOKEN with your JWT)
 curl -X GET "https://localhost:5001/api/users/discovery" \
   -H "Authorization: Bearer TOKEN"
+
+# List all users (admin only; replace ADMIN_TOKEN with a JWT for an admin user)
+curl -X GET "https://localhost:5001/api/users/all" \
+  -H "Authorization: Bearer ADMIN_TOKEN"
 ```
 
 ---
