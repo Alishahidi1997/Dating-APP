@@ -188,7 +188,7 @@ Content-Type: application/json
 | DELETE | `/account` | Delete currently logged-in account |
 | GET | `/users/hobbies` | Get predefined hobby options for selection |
 | GET | `/users/discovery` | Discovery feed (query: `gender`, `minAge`, `maxAge`, `pageNumber`, `pageSize`, `orderBy`) |
-| GET | `/users/all` | **Admin only.** List all users (same shape as profile DTOs; not paginated). Requires JWT with role `Admin`. |
+| GET | `/users/all` | In Development: any authenticated user. Outside Development: **Admin only** (JWT role `Admin`). |
 | GET | `/users/{username}` | Get user profile |
 | PUT | `/users` | Update own profile (`hobbyIds` supported) |
 | GET | `/users/matches` | Mutual matches |
@@ -206,9 +206,12 @@ Content-Type: application/json
 
 `DELETE /account` requires a valid bearer token and deletes the authenticated user account.
 
-### Admin: list all users
+### List all users (`/users/all`)
 
-Requires `Authorization: Bearer <token>` where the token was issued for a user with role **`Admin`**. Non-admin users receive **403 Forbidden**.
+Requires `Authorization: Bearer <token>`.
+
+- **Development environment:** any authenticated user can call it.
+- **Non-development environments:** token must include role **`Admin`** (otherwise `403 Forbidden`).
 
 ```http
 GET /api/users/all
@@ -219,7 +222,7 @@ Authorization: Bearer <token>
 
 ```bash
 curl -X GET "https://localhost:5001/api/users/all" \
-  -H "Authorization: Bearer ADMIN_JWT_TOKEN"
+  -H "Authorization: Bearer JWT_TOKEN"
 ```
 
 **Promote a user to admin in SQLite (then log in again):**
@@ -307,9 +310,9 @@ curl -X PUT "https://localhost:5001/api/users" \
   -H "Content-Type: application/json" \
   -d '{"hobbyIds":[1,5,10]}'
 
-# List all users (admin only; replace ADMIN_TOKEN with a JWT for an admin user)
+# List all users (Development: any authenticated user; Production: admin only)
 curl -X GET "https://localhost:5001/api/users/all" \
-  -H "Authorization: Bearer ADMIN_TOKEN"
+  -H "Authorization: Bearer TOKEN"
 ```
 
 ---

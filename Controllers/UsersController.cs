@@ -9,7 +9,7 @@ namespace API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class UsersController(IUserService userService) : ControllerBase
+public class UsersController(IUserService userService, IWebHostEnvironment env) : ControllerBase
 {
     private int UserId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
@@ -25,10 +25,14 @@ public class UsersController(IUserService userService) : ControllerBase
     public async Task<ActionResult<IReadOnlyList<HobbyDto>>> GetHobbies(CancellationToken ct) =>
         Ok(await userService.GetHobbyOptionsAsync(ct));
 
-    [Authorize(Roles = "Admin")]
     [HttpGet("all")]
-    public async Task<ActionResult<IEnumerable<UserDto>>> GetAllUsers(CancellationToken ct) =>
-        Ok(await userService.GetAllUsersAsync(ct));
+    public async Task<ActionResult<IEnumerable<UserDto>>> GetAllUsers(CancellationToken ct)
+    {
+        if (!env.IsDevelopment() && !User.IsInRole("Admin"))
+            return Forbid();
+
+        return Ok(await userService.GetAllUsersAsync(ct));
+    }
 
     [HttpGet("matches")]
     public async Task<ActionResult<IEnumerable<UserDto>>> GetMatches(CancellationToken ct) =>
