@@ -18,17 +18,26 @@ public class MessageRepository(AppDbContext context) : IMessageRepository
 
     public async Task<PagedResultDto<Message>> GetMessagesForUserAsync(MessageParams messageParams, CancellationToken ct = default)
     {
-        var query = context.Messages
-            .Include(m => m.Sender).ThenInclude(s => s!.Photos)
-            .Include(m => m.Recipient).ThenInclude(r => r!.Photos)
-            .AsQueryable();
-
-        query = messageParams.Container.ToLowerInvariant() switch
+        var filtered = messageParams.Container.ToLowerInvariant() switch
         {
-            "inbox" => query.Where(m => m.RecipientId == messageParams.UserId && !m.RecipientDeleted),
-            "outbox" => query.Where(m => m.SenderId == messageParams.UserId && !m.SenderDeleted),
-            _ => query.Where(m => m.RecipientId == messageParams.UserId && !m.RecipientDeleted && m.DateRead == null)
+            "inbox" => context.Messages.FromSqlInterpolated($@"
+                SELECT * FROM Messages
+                WHERE RecipientId = {messageParams.UserId}
+                  AND RecipientDeleted = 0"),
+            "outbox" => context.Messages.FromSqlInterpolated($@"
+                SELECT * FROM Messages
+                WHERE SenderId = {messageParams.UserId}
+                  AND SenderDeleted = 0"),
+            _ => context.Messages.FromSqlInterpolated($@"
+                SELECT * FROM Messages
+                WHERE RecipientId = {messageParams.UserId}
+                  AND RecipientDeleted = 0
+                  AND DateRead IS NULL")
         };
+
+        var query = filtered
+            .Include(m => m.Sender).ThenInclude(s => s!.Photos)
+            .Include(m => m.Recipient).ThenInclude(r => r!.Photos);
 
         query = query.OrderByDescending(m => m.MessageSent);
         var totalCount = await query.CountAsync(ct);
