@@ -35,7 +35,7 @@ public class MessageRepository(AppDbContext context) : IMessageRepository
                   AND DateRead IS NULL")
         };
 
-        var query = filtered
+        IQueryable<Message> query = filtered
             .Include(m => m.Sender).ThenInclude(s => s!.Photos)
             .Include(m => m.Recipient).ThenInclude(r => r!.Photos);
 
