@@ -11,6 +11,7 @@ public record UserDto
     public required string LookingFor { get; init; }
     public string? City { get; init; }
     public string? Country { get; init; }
+    public string? JobTitle { get; init; }
     public string? PhotoUrl { get; init; }
     public DateTime LastActive { get; init; }
     public DateTime Created { get; init; }

@@ -15,6 +15,7 @@ A RESTful dating app backend built with .NET. Supports registration, authenticat
 ### User Profile
 - **Bio** – Short description (up to 500 characters)
 - **Known As** – Display name
+- **Job Title** – User's role/profession (optional)
 - **Gender** – Male, female, or other
 - **Looking For** – Preferred gender
 - **Location** – City and country
@@ -142,6 +143,7 @@ Content-Type: application/json
   "dateOfBirth": "1995-05-15",
   "bio": "Love hiking and coffee",
   "knownAs": "John",
+  "jobTitle": "Software Engineer",
   "city": "New York",
   "country": "USA",
   "hobbyIds": [1, 5, 10]
@@ -190,7 +192,7 @@ Content-Type: application/json
 | GET | `/users/discovery` | Discovery feed (query: `gender`, `minAge`, `maxAge`, `pageNumber`, `pageSize`, `orderBy`) |
 | GET | `/users/all` | In Development: any authenticated user. Outside Development: **Admin only** (JWT role `Admin`). |
 | GET | `/users/{username}` | Get user profile |
-| PUT | `/users` | Update own profile (`hobbyIds` supported) |
+| PUT | `/users` | Update own profile (`hobbyIds` and `jobTitle` supported) |
 | GET | `/users/matches` | Mutual matches |
 | GET | `/users/likes?predicate=liked` | Users you liked |
 | GET | `/users/likes?predicate=likedby` | Users who liked you |
@@ -309,6 +311,12 @@ curl -X PUT "https://localhost:5001/api/users" \
   -H "Authorization: Bearer TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"hobbyIds":[1,5,10]}'
+
+# Update profile job title
+curl -X PUT "https://localhost:5001/api/users" \
+  -H "Authorization: Bearer TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"jobTitle":"Software Engineer"}'
 
 # List all users (Development: any authenticated user; Production: admin only)
 curl -X GET "https://localhost:5001/api/users/all" \

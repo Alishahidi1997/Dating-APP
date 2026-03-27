@@ -31,6 +31,7 @@ public class UserService(IUserRepository userRepo) : IUserService
         if (dto.DateOfBirth.HasValue) user.DateOfBirth = dto.DateOfBirth.Value;
         if (dto.City != null) user.City = dto.City;
         if (dto.Country != null) user.Country = dto.Country;
+        if (dto.JobTitle != null) user.JobTitle = dto.JobTitle;
         if (dto.HobbyIds != null)
         {
             var hobbies = await userRepo.GetHobbiesByIdsAsync(dto.HobbyIds, ct);
@@ -86,6 +87,7 @@ public class UserService(IUserRepository userRepo) : IUserService
         LookingFor = user.LookingFor,
         City = user.City,
         Country = user.Country,
+        JobTitle = user.JobTitle,
         PhotoUrl = user.Photos?.FirstOrDefault(p => p.IsMain)?.Url,
         LastActive = user.LastActive,
         Created = user.Created,

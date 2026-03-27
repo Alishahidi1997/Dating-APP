@@ -58,6 +58,7 @@ public static class DevDataSeeder
                 LookingFor = "any",
                 KnownAs = $"Demo {i}",
                 Bio = "Seeded demo profile",
+                JobTitle = i % 3 == 0 ? "Software Engineer" : i % 3 == 1 ? "Teacher" : "Designer",
                 DateOfBirth = new DateOnly(1995, 1, 1).AddDays(i * 30),
                 City = "Seed City",
                 Country = "Seed Country",

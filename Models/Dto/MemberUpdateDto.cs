@@ -20,5 +20,8 @@ public record MemberUpdateDto
     [MaxLength(100)]
     public string? Country { get; init; }
 
+    [MaxLength(150)]
+    public string? JobTitle { get; init; }
+
     public IReadOnlyList<int>? HobbyIds { get; init; }
 }

@@ -29,7 +29,8 @@ public class AccountService(IUserRepository userRepo, ITokenService tokenService
             KnownAs = dto.KnownAs ?? dto.UserName,
             DateOfBirth = dto.DateOfBirth,
             City = dto.City,
-            Country = dto.Country
+            Country = dto.Country,
+            JobTitle = dto.JobTitle
         };
 
         if (dto.HobbyIds.Count > 0)
@@ -87,6 +88,7 @@ public class AccountService(IUserRepository userRepo, ITokenService tokenService
         LookingFor = user.LookingFor,
         City = user.City,
         Country = user.Country,
+        JobTitle = user.JobTitle,
         PhotoUrl = photos.FirstOrDefault(p => p.IsMain)?.Url,
         LastActive = user.LastActive,
         Created = user.Created,
