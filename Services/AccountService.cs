@@ -1,16 +1,10 @@
 using API.Data;
 using API.Entities;
 using API.Models.Dto;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 
 namespace API.Services;
 
-public class AccountService(
-    IUserRepository userRepo,
-    ITokenService tokenService,
-    ILogger<AccountService> logger,
-    IHostEnvironment env) : IAccountService
+public class AccountService(IUserRepository userRepo, ITokenService tokenService) : IAccountService
 {
     public async Task<(UserDto? User, string? Token)?> RegisterAsync(RegisterDto dto, CancellationToken ct = default)
     {
@@ -58,30 +52,15 @@ public class AccountService(
 
     public async Task<(UserDto? User, string? Token)?> LoginAsync(LoginDto dto, CancellationToken ct = default)
     {
-        if (env.IsDevelopment())
-            logger.LogInformation("Login attempt for username '{UserName}'", dto.UserName);
-
         var user = await userRepo.GetUserByUsernameWithPhotosAsync(dto.UserName.ToLowerInvariant(), ct);
-        if (user == null)
-        {
-            if (env.IsDevelopment())
-                logger.LogWarning("Login failed: user '{UserName}' not found", dto.UserName);
-            return null;
-        }
+        if (user == null) return null;
 
         if (!BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
-        {
-            if (env.IsDevelopment())
-                logger.LogWarning("Login failed: invalid password for user '{UserName}'", dto.UserName);
             return null;
-        }
 
         user.LastActive = DateTime.UtcNow;
         userRepo.Update(user);
         await userRepo.SaveAllAsync(ct);
-
-        if (env.IsDevelopment())
-            logger.LogInformation("Login succeeded for user '{UserName}' (Id: {UserId})", user.UserName, user.Id);
 
         return (MapToUserDto(user), tokenService.CreateToken(user));
     }
@@ -89,7 +68,7 @@ public class AccountService(
     public async Task<bool> DeleteAccountAsync(int userId, CancellationToken ct = default)
     {
         var user = await userRepo.GetUserByIdAsync(userId, ct);
-        if (user == null) return false;
+        if (user is null) return false;
 
         userRepo.Delete(user);
         return await userRepo.SaveAllAsync(ct);
@@ -100,6 +79,7 @@ public class AccountService(
         var photos = user.Photos ?? [];
         return new UserDto
     {
+        //var hobbies = user.UserHobbies ?? [];
         Id = user.Id,
         UserName = user.UserName,
         KnownAs = user.KnownAs ?? user.UserName,
