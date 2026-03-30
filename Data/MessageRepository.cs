@@ -6,6 +6,9 @@ namespace API.Data;
 
 public class MessageRepository(AppDbContext context) : IMessageRepository
 {
+    private const string InboxContainer = "inbox";
+    private const string OutboxContainer = "outbox";
+
     public void AddMessage(Message message) => context.Messages.Add(message);
 
     public void DeleteMessage(Message message) => context.Messages.Remove(message);
@@ -18,28 +21,11 @@ public class MessageRepository(AppDbContext context) : IMessageRepository
 
     public async Task<PagedResultDto<Message>> GetMessagesForUserAsync(MessageParams messageParams, CancellationToken ct = default)
     {
-        var filtered = messageParams.Container.ToLowerInvariant() switch
-        {
-            "inbox" => context.Messages.FromSqlInterpolated($@"
-                SELECT * FROM Messages
-                WHERE RecipientId = {messageParams.UserId}
-                  AND RecipientDeleted = 0"),
-            "outbox" => context.Messages.FromSqlInterpolated($@"
-                SELECT * FROM Messages
-                WHERE SenderId = {messageParams.UserId}
-                  AND SenderDeleted = 0"),
-            _ => context.Messages.FromSqlInterpolated($@"
-                SELECT * FROM Messages
-                WHERE RecipientId = {messageParams.UserId}
-                  AND RecipientDeleted = 0
-                  AND DateRead IS NULL")
-        };
-
-        IQueryable<Message> query = filtered
+        var query = BuildContainerQuery(messageParams)
             .Include(m => m.Sender).ThenInclude(s => s!.Photos)
-            .Include(m => m.Recipient).ThenInclude(r => r!.Photos);
+            .Include(m => m.Recipient).ThenInclude(r => r!.Photos)
+            .OrderByDescending(m => m.MessageSent);
 
-        query = query.OrderByDescending(m => m.MessageSent);
         var totalCount = await query.CountAsync(ct);
         var items = await query
             .Skip((messageParams.PageNumber - 1) * messageParams.PageSize)
@@ -58,4 +44,29 @@ public class MessageRepository(AppDbContext context) : IMessageRepository
                 (m.SenderId == recipientId && m.RecipientId == userId && !m.RecipientDeleted))
             .OrderBy(m => m.MessageSent)
             .ToListAsync(ct);
+
+    private IQueryable<Message> BuildContainerQuery(MessageParams messageParams)
+    {
+        var container = messageParams.Container.ToLowerInvariant();
+        var userId = messageParams.UserId;
+
+        return container switch
+        {
+            InboxContainer => context.Messages.FromSqlInterpolated($@"
+                SELECT * FROM Messages
+                WHERE RecipientId = {userId}
+                  AND RecipientDeleted = 0"),
+
+            OutboxContainer => context.Messages.FromSqlInterpolated($@"
+                SELECT * FROM Messages
+                WHERE SenderId = {userId}
+                  AND SenderDeleted = 0"),
+
+            _ => context.Messages.FromSqlInterpolated($@"
+                SELECT * FROM Messages
+                WHERE RecipientId = {userId}
+                  AND RecipientDeleted = 0
+                  AND DateRead IS NULL")
+        };
+    }
 }
