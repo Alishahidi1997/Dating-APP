@@ -21,7 +21,8 @@ Swagger:
 - Register / login with JWT
 - Profile update (bio, knownAs, city, country, jobTitle, hobbies)
 - Discovery with filters (age, gender, paging, order)
-- Likes + matches
+- Likes + matches (max **20 new likes per UTC day** per user; **429** when over the limit)
+- Each like can record **which of the target’s photos** was shown (`photoId` in body, or defaults to their main photo)
 - Messages (inbox/outbox/unread, thread, read, delete)
 - Photo upload / delete / set-main
 - Account delete
@@ -50,9 +51,9 @@ Protected (Bearer token required):
 - `PUT /api/users`
 - `GET /api/users/hobbies`
 - `GET /api/users/matches`
-- `GET /api/users/likes?predicate=liked|likedby`
+- `GET /api/users/likes?predicate=liked|likedby` — returns `{ member, likedPhoto }[]` (`likedPhoto` is the target’s photo for that like; for `likedby` it’s **your** photo they saw, or `null` if unknown)
 - `GET /api/users/all` (rules above)
-- `POST /api/likes/{targetUserId}`
+- `POST /api/likes/{targetUserId}` — optional body `{ "photoId": <int> }` (must be one of that user’s photos); empty body OK
 - `POST /api/messages`
 - `GET /api/messages`
 - `GET /api/messages/thread/{recipientId}`
@@ -79,6 +80,12 @@ curl -X POST http://localhost:5000/api/account/login \
 # Use returned token
 curl -X GET http://localhost:5000/api/users/discovery \
   -H "Authorization: Bearer TOKEN"
+
+# Like someone, recording which of their photos you saw (optional)
+curl -X POST http://localhost:5000/api/likes/2 \
+  -H "Authorization: Bearer TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"photoId\":5}"
 ```
 
 ## Migrations
