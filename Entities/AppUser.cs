@@ -18,6 +18,11 @@ public class AppUser
     public string? JobTitle { get; set; }
     public bool IsAdmin { get; set; }
 
+    public int SubscriptionPlanId { get; set; } = 1;
+    public SubscriptionPlan SubscriptionPlan { get; set; } = null!;
+    public DateTime? SubscriptionEndsUtc { get; set; }
+    public int DiscoveryBoostCached { get; set; }
+
     public ICollection<Photo> Photos { get; set; } = [];
     public ICollection<UserLike> LikedUsers { get; set; } = [];
     public ICollection<UserLike> LikedByUsers { get; set; } = [];
