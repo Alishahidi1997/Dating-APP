@@ -15,12 +15,14 @@ public class UserRepository(AppDbContext context) : IUserRepository
 
     public async Task<IEnumerable<AppUser>> GetUsersAsync(CancellationToken ct = default) =>
         await context.Users
+            .Include(u => u.SubscriptionPlan)
             .Include(u => u.Photos)
             .Include(u => u.UserHobbies).ThenInclude(uh => uh.Hobby)
             .ToListAsync(ct);
 
     public async Task<AppUser?> GetUserByIdAsync(int id, CancellationToken ct = default) =>
         await context.Users
+            .Include(u => u.SubscriptionPlan)
             .Include(u => u.Photos)
             .Include(u => u.UserHobbies).ThenInclude(uh => uh.Hobby)
             .FirstOrDefaultAsync(u => u.Id == id, ct);
@@ -35,6 +37,7 @@ public class UserRepository(AppDbContext context) : IUserRepository
 
     public async Task<AppUser?> GetUserByUsernameWithPhotosAsync(string username, CancellationToken ct = default) =>
         await context.Users
+            .Include(u => u.SubscriptionPlan)
             .Include(u => u.Photos)
             .Include(u => u.UserHobbies).ThenInclude(uh => uh.Hobby)
             .FirstOrDefaultAsync(u => u.UserName == username, ct);
@@ -45,6 +48,7 @@ public class UserRepository(AppDbContext context) : IUserRepository
         var maxDob = DateOnly.FromDateTime(DateTime.Today.AddYears(-userParams.MinAge));
 
         var query = context.Users
+            .Include(u => u.SubscriptionPlan)
             .Include(u => u.Photos)
             .Include(u => u.UserHobbies).ThenInclude(uh => uh.Hobby)
             .Where(u => u.Id != userId)
@@ -61,8 +65,8 @@ public class UserRepository(AppDbContext context) : IUserRepository
 
         query = userParams.OrderBy.ToLowerInvariant() switch
         {
-            "created" => query.OrderByDescending(u => u.Created),
-            _ => query.OrderByDescending(u => u.LastActive)
+            "created" => query.OrderByDescending(u => u.DiscoveryBoostCached).ThenByDescending(u => u.Created),
+            _ => query.OrderByDescending(u => u.DiscoveryBoostCached).ThenByDescending(u => u.LastActive)
         };
 
         var totalCount = await query.CountAsync(ct);
@@ -89,6 +93,7 @@ public class UserRepository(AppDbContext context) : IUserRepository
         var likes = await context.UserLikes
             .Where(ul => ul.SourceUserId == userId)
             .Include(ul => ul.TargetPhoto)
+            .Include(ul => ul.TargetUser!).ThenInclude(u => u.SubscriptionPlan)
             .Include(ul => ul.TargetUser!).ThenInclude(u => u.Photos)
             .Include(ul => ul.TargetUser!).ThenInclude(u => u.UserHobbies).ThenInclude(uh => uh.Hobby)
             .ToListAsync(ct);
@@ -101,6 +106,7 @@ public class UserRepository(AppDbContext context) : IUserRepository
         var likes = await context.UserLikes
             .Where(ul => ul.TargetUserId == userId)
             .Include(ul => ul.TargetPhoto)
+            .Include(ul => ul.SourceUser!).ThenInclude(u => u.SubscriptionPlan)
             .Include(ul => ul.SourceUser!).ThenInclude(u => u.Photos)
             .Include(ul => ul.SourceUser!).ThenInclude(u => u.UserHobbies).ThenInclude(uh => uh.Hobby)
             .ToListAsync(ct);
@@ -116,6 +122,7 @@ public class UserRepository(AppDbContext context) : IUserRepository
             .ToListAsync(ct);
 
         return await context.Users
+            .Include(u => u.SubscriptionPlan)
             .Include(u => u.Photos)
             .Include(u => u.UserHobbies).ThenInclude(uh => uh.Hobby)
             .Where(u => liked.Contains(u.Id) && context.UserLikes.Any(ul => ul.SourceUserId == u.Id && ul.TargetUserId == userId))

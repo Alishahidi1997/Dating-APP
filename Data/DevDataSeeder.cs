@@ -9,6 +9,7 @@ public static class DevDataSeeder
     {
         await EnsureHobbiesAsync(db, ct);
         await EnsureUsersAsync(db, ct);
+        await EnsureSubscriptionSamplesAsync(db, ct);
         await EnsurePhotosAsync(db, ct);
         await EnsureUserHobbiesAsync(db, ct);
         await EnsureLikesAsync(db, ct);
@@ -64,6 +65,37 @@ public static class DevDataSeeder
                 Country = "Seed Country",
                 IsAdmin = false
             });
+        }
+
+        await db.SaveChangesAsync(ct);
+    }
+
+    private static async Task EnsureSubscriptionSamplesAsync(AppDbContext db, CancellationToken ct)
+    {
+        if (!await db.SubscriptionPlans.AnyAsync(ct))
+            return;
+
+        if (await db.Users!.AnyAsync(u => u.SubscriptionPlanId > 1, ct))
+            return;
+
+        var list = await db.Users!.OrderBy(u => u.Id).Take(15).ToListAsync(ct);
+        if (list.Count == 0)
+            return;
+
+        for (var i = 0; i < list.Count; i++)
+        {
+            if (i < 5)
+            {
+                list[i].SubscriptionPlanId = 3;
+                list[i].SubscriptionEndsUtc = DateTime.UtcNow.AddYears(1);
+                list[i].DiscoveryBoostCached = 1;
+            }
+            else if (i < 10)
+            {
+                list[i].SubscriptionPlanId = 2;
+                list[i].SubscriptionEndsUtc = DateTime.UtcNow.AddMonths(6);
+                list[i].DiscoveryBoostCached = 0;
+            }
         }
 
         await db.SaveChangesAsync(ct);
