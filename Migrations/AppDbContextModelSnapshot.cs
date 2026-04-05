@@ -38,6 +38,9 @@ namespace API.Migrations
                     b.Property<DateOnly>("DateOfBirth")
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("DiscoveryBoostCached")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -66,6 +69,12 @@ namespace API.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<DateTime?>("SubscriptionEndsUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SubscriptionPlanId")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("UserName")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -74,6 +83,8 @@ namespace API.Migrations
 
                     b.HasIndex("Email")
                         .IsUnique();
+
+                    b.HasIndex("SubscriptionPlanId");
 
                     b.HasIndex("UserName")
                         .IsUnique();
@@ -211,6 +222,69 @@ namespace API.Migrations
                     b.ToTable("Photos");
                 });
 
+            modelBuilder.Entity("API.Entities.SubscriptionPlan", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("MonthlyPriceUsd")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("PriorityInDiscovery")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("SeeWhoLikedYou")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("UnlimitedLikes")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SubscriptionPlans");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Description = "Daily like cap; who-liked-you is locked.",
+                            MonthlyPriceUsd = 0m,
+                            Name = "Free",
+                            PriorityInDiscovery = false,
+                            SeeWhoLikedYou = false,
+                            UnlimitedLikes = false
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Description = "Unlimited likes and see who liked you.",
+                            MonthlyPriceUsd = 9.99m,
+                            Name = "Plus",
+                            PriorityInDiscovery = false,
+                            SeeWhoLikedYou = true,
+                            UnlimitedLikes = true
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Description = "Same as Plus with higher placement in discovery.",
+                            MonthlyPriceUsd = 19.99m,
+                            Name = "Premium",
+                            PriorityInDiscovery = true,
+                            SeeWhoLikedYou = true,
+                            UnlimitedLikes = true
+                        });
+                });
+
             modelBuilder.Entity("API.Entities.UserHobby", b =>
                 {
                     b.Property<int>("AppUserId")
@@ -247,6 +321,17 @@ namespace API.Migrations
                     b.HasIndex("TargetUserId");
 
                     b.ToTable("UserLikes");
+                });
+
+            modelBuilder.Entity("API.Entities.AppUser", b =>
+                {
+                    b.HasOne("API.Entities.SubscriptionPlan", "SubscriptionPlan")
+                        .WithMany("Subscribers")
+                        .HasForeignKey("SubscriptionPlanId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("SubscriptionPlan");
                 });
 
             modelBuilder.Entity("API.Entities.Message", b =>
@@ -342,6 +427,11 @@ namespace API.Migrations
             modelBuilder.Entity("API.Entities.Hobby", b =>
                 {
                     b.Navigation("UserHobbies");
+                });
+
+            modelBuilder.Entity("API.Entities.SubscriptionPlan", b =>
+                {
+                    b.Navigation("Subscribers");
                 });
 #pragma warning restore 612, 618
         }
