@@ -1,6 +1,7 @@
-# Dating App API
+# Social Networking API
 
-Small .NET API for a dating app.  
+
+.NET API for a Social Networking App.  
 It has auth, profiles, likes, matches, messages, photos, hobbies, and subscription tiers.
 
 ## Run It
