@@ -89,6 +89,16 @@ Set in `appsettings.json` / `appsettings.Development.json`:
 - `TokenKey` (64+ chars)
 - `AdminUserNames` (optional, comma-separated)
 
+## Tests
+
+Uses xUnit + `WebApplicationFactory` against a temp SQLite file (`ASPNETCORE_ENVIRONMENT=Testing`, no dev seeder).
+
+```bash
+dotnet test API.Tests/API.Tests.csproj
+```
+
+Stop the running API first if Windows locks `API.dll` during build.
+
 ## EF Migrations
 
 ```bash
