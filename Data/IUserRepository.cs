@@ -14,9 +14,9 @@ public interface IUserRepository
     Task<AppUser?> GetUserByUsernameAsync(string username, CancellationToken ct = default);
     Task<AppUser?> GetUserByEmailAsync(string email, CancellationToken ct = default);
     Task<AppUser?> GetUserByUsernameWithPhotosAsync(string username, CancellationToken ct = default);
-    Task<PagedResultDto<AppUser>> GetUsersForDiscoveryAsync(int userId, UserParams userParams, CancellationToken ct = default);
-    Task<IReadOnlyList<LikedUserResult>> GetLikedUsersAsync(int userId, string predicate, CancellationToken ct = default);
-    Task<IEnumerable<AppUser>> GetMatchesAsync(int userId, CancellationToken ct = default);
+    Task<PagedResultDto<AppUser>> GetUsersForFeedAsync(int userId, UserParams userParams, CancellationToken ct = default);
+    Task<IReadOnlyList<FollowRelationResult>> GetFollowRelationsAsync(int userId, string list, CancellationToken ct = default);
+    Task<IEnumerable<AppUser>> GetConnectionsAsync(int userId, CancellationToken ct = default);
     Task<IReadOnlyList<Hobby>> GetAllHobbiesAsync(CancellationToken ct = default);
     Task<IReadOnlyList<Hobby>> GetHobbiesByIdsAsync(IEnumerable<int> hobbyIds, CancellationToken ct = default);
 }

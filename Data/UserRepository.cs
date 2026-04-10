@@ -42,26 +42,38 @@ public class UserRepository(AppDbContext context) : IUserRepository
             .Include(u => u.UserHobbies).ThenInclude(uh => uh.Hobby)
             .FirstOrDefaultAsync(u => u.UserName == username, ct);
 
-    public async Task<PagedResultDto<AppUser>> GetUsersForDiscoveryAsync(int userId, UserParams userParams, CancellationToken ct = default)
+    public async Task<PagedResultDto<AppUser>> GetUsersForFeedAsync(int userId, UserParams userParams, CancellationToken ct = default)
     {
-        var minDob = DateOnly.FromDateTime(DateTime.Today.AddYears(-userParams.MaxAge));
-        var maxDob = DateOnly.FromDateTime(DateTime.Today.AddYears(-userParams.MinAge));
-
         var query = context.Users
             .Include(u => u.SubscriptionPlan)
             .Include(u => u.Photos)
             .Include(u => u.UserHobbies).ThenInclude(uh => uh.Hobby)
-            .Where(u => u.Id != userId)
-            .Where(u => u.DateOfBirth >= minDob && u.DateOfBirth <= maxDob);
+            .Where(u => u.Id != userId);
 
-        if (!string.IsNullOrEmpty(userParams.Gender))
+        var oldestAllowedDob = DateOnly.FromDateTime(DateTime.Today.AddYears(-18));
+        query = query.Where(u => u.DateOfBirth <= oldestAllowedDob);
+
+        if (userParams.MinAge.HasValue || userParams.MaxAge.HasValue)
+        {
+            var minAge = userParams.MinAge ?? 18;
+            var maxAge = userParams.MaxAge ?? 120;
+            var minDob = DateOnly.FromDateTime(DateTime.Today.AddYears(-maxAge));
+            var maxDob = DateOnly.FromDateTime(DateTime.Today.AddYears(-minAge));
+            query = query.Where(u => u.DateOfBirth >= minDob && u.DateOfBirth <= maxDob);
+        }
+
+        if (!string.IsNullOrWhiteSpace(userParams.Gender))
             query = query.Where(u => u.Gender == userParams.Gender);
 
-        var likes = await context.UserLikes
-            .Where(ul => ul.SourceUserId == userId)
-            .Select(ul => ul.TargetUserId)
+        var hobbyIds = ParseHobbyIds(userParams.HobbyIds);
+        if (hobbyIds.Count > 0)
+            query = query.Where(u => u.UserHobbies.Any(uh => hobbyIds.Contains(uh.HobbyId)));
+
+        var followingIds = await context.UserFollows
+            .Where(f => f.FollowerId == userId)
+            .Select(f => f.FollowingId)
             .ToListAsync(ct);
-        query = query.Where(u => !likes.Contains(u.Id));
+        query = query.Where(u => !followingIds.Contains(u.Id));
 
         query = userParams.OrderBy.ToLowerInvariant() switch
         {
@@ -78,54 +90,70 @@ public class UserRepository(AppDbContext context) : IUserRepository
         return new PagedResultDto<AppUser>(items, totalCount, userParams.PageNumber, userParams.PageSize);
     }
 
-    public async Task<IReadOnlyList<LikedUserResult>> GetLikedUsersAsync(int userId, string predicate, CancellationToken ct = default)
+    private static List<int> ParseHobbyIds(string? raw)
     {
-        return predicate.ToLowerInvariant() switch
+        if (string.IsNullOrWhiteSpace(raw)) return [];
+        var parts = raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var list = new List<int>();
+        foreach (var p in parts)
         {
-            "liked" => await LoadUsersILikedAsync(userId, ct),
-            "likedby" => await LoadUsersWhoLikedMeAsync(userId, ct),
+            if (int.TryParse(p, out var id))
+                list.Add(id);
+        }
+        return list.Distinct().ToList();
+    }
+
+    public async Task<IReadOnlyList<FollowRelationResult>> GetFollowRelationsAsync(int userId, string list, CancellationToken ct = default)
+    {
+        return list.ToLowerInvariant() switch
+        {
+            "following" or "liked" => await LoadFollowingAsync(userId, ct),
+            "followers" or "likedby" => await LoadFollowersAsync(userId, ct),
             _ => []
         };
     }
 
-    private async Task<IReadOnlyList<LikedUserResult>> LoadUsersILikedAsync(int userId, CancellationToken ct)
+    private async Task<IReadOnlyList<FollowRelationResult>> LoadFollowingAsync(int userId, CancellationToken ct)
     {
-        var likes = await context.UserLikes
-            .Where(ul => ul.SourceUserId == userId)
-            .Include(ul => ul.TargetPhoto)
-            .Include(ul => ul.TargetUser!).ThenInclude(u => u.SubscriptionPlan)
-            .Include(ul => ul.TargetUser!).ThenInclude(u => u.Photos)
-            .Include(ul => ul.TargetUser!).ThenInclude(u => u.UserHobbies).ThenInclude(uh => uh.Hobby)
+        var rows = await context.UserFollows
+            .Where(f => f.FollowerId == userId)
+            .Include(f => f.Following!).ThenInclude(u => u.SubscriptionPlan)
+            .Include(f => f.Following!).ThenInclude(u => u.Photos)
+            .Include(f => f.Following!).ThenInclude(u => u.UserHobbies).ThenInclude(uh => uh.Hobby)
             .ToListAsync(ct);
 
-        return likes.Select(ul => new LikedUserResult(ul.TargetUser, ul.TargetPhoto)).ToList();
+        return rows
+            .Select(f => new FollowRelationResult(f.Following, f.FollowedAtUtc))
+            .ToList();
     }
 
-    private async Task<IReadOnlyList<LikedUserResult>> LoadUsersWhoLikedMeAsync(int userId, CancellationToken ct)
+    private async Task<IReadOnlyList<FollowRelationResult>> LoadFollowersAsync(int userId, CancellationToken ct)
     {
-        var likes = await context.UserLikes
-            .Where(ul => ul.TargetUserId == userId)
-            .Include(ul => ul.TargetPhoto)
-            .Include(ul => ul.SourceUser!).ThenInclude(u => u.SubscriptionPlan)
-            .Include(ul => ul.SourceUser!).ThenInclude(u => u.Photos)
-            .Include(ul => ul.SourceUser!).ThenInclude(u => u.UserHobbies).ThenInclude(uh => uh.Hobby)
+        var rows = await context.UserFollows
+            .Where(f => f.FollowingId == userId)
+            .Include(f => f.Follower!).ThenInclude(u => u.SubscriptionPlan)
+            .Include(f => f.Follower!).ThenInclude(u => u.Photos)
+            .Include(f => f.Follower!).ThenInclude(u => u.UserHobbies).ThenInclude(uh => uh.Hobby)
             .ToListAsync(ct);
 
-        return likes.Select(ul => new LikedUserResult(ul.SourceUser, ul.TargetPhoto)).ToList();
+        return rows
+            .Select(f => new FollowRelationResult(f.Follower, f.FollowedAtUtc))
+            .ToList();
     }
 
-    public async Task<IEnumerable<AppUser>> GetMatchesAsync(int userId, CancellationToken ct = default)
+    public async Task<IEnumerable<AppUser>> GetConnectionsAsync(int userId, CancellationToken ct = default)
     {
-        var liked = await context.UserLikes
-            .Where(ul => ul.SourceUserId == userId)
-            .Select(ul => ul.TargetUserId)
+        var followingIds = await context.UserFollows
+            .Where(f => f.FollowerId == userId)
+            .Select(f => f.FollowingId)
             .ToListAsync(ct);
 
         return await context.Users
             .Include(u => u.SubscriptionPlan)
             .Include(u => u.Photos)
             .Include(u => u.UserHobbies).ThenInclude(uh => uh.Hobby)
-            .Where(u => liked.Contains(u.Id) && context.UserLikes.Any(ul => ul.SourceUserId == u.Id && ul.TargetUserId == userId))
+            .Where(u => followingIds.Contains(u.Id) &&
+                        context.UserFollows.Any(f => f.FollowerId == u.Id && f.FollowingId == userId))
             .ToListAsync(ct);
     }
 

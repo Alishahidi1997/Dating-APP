@@ -12,7 +12,8 @@ public static class DevDataSeeder
         await EnsureSubscriptionSamplesAsync(db, ct);
         await EnsurePhotosAsync(db, ct);
         await EnsureUserHobbiesAsync(db, ct);
-        await EnsureLikesAsync(db, ct);
+        await EnsureFollowsAsync(db, ct);
+        await EnsureBookmarksAsync(db, ct);
         await EnsureMessagesAsync(db, ct);
     }
 
@@ -41,7 +42,7 @@ public static class DevDataSeeder
 
     private static async Task EnsureUsersAsync(AppDbContext db, CancellationToken ct)
     {
-        var usersSet = db.Users!;
+        var usersSet = db.Users;
         var count = await usersSet.CountAsync(ct);
         if (count >= 20) return;
 
@@ -75,10 +76,10 @@ public static class DevDataSeeder
         if (!await db.SubscriptionPlans.AnyAsync(ct))
             return;
 
-        if (await db.Users!.AnyAsync(u => u.SubscriptionPlanId > 1, ct))
+        if (await db.Users.AnyAsync(u => u.SubscriptionPlanId > 1, ct))
             return;
 
-        var list = await db.Users!.OrderBy(u => u.Id).Take(15).ToListAsync(ct);
+        var list = await db.Users.OrderBy(u => u.Id).Take(15).ToListAsync(ct);
         if (list.Count == 0)
             return;
 
@@ -103,10 +104,10 @@ public static class DevDataSeeder
 
     private static async Task EnsurePhotosAsync(AppDbContext db, CancellationToken ct)
     {
-        var count = await db.Photos!.CountAsync(ct);
+        var count = await db.Photos.CountAsync(ct);
         if (count >= 20) return;
 
-        var users = await db.Users!
+        var users = await db.Users
             .Include(u => u.Photos)
             .OrderBy(u => u.Id)
             .ToListAsync(ct);
@@ -150,7 +151,7 @@ public static class DevDataSeeder
         var count = await db.UserHobbies.CountAsync(ct);
         if (count >= 20) return;
 
-        var users = await db.Users!.OrderBy(u => u.Id).ToListAsync(ct);
+        var users = await db.Users.OrderBy(u => u.Id).ToListAsync(ct);
         var hobbies = await db.Hobbies.OrderBy(h => h.Id).ToListAsync(ct);
         if (users.Count == 0 || hobbies.Count == 0) return;
 
@@ -180,38 +181,32 @@ public static class DevDataSeeder
         await db.SaveChangesAsync(ct);
     }
 
-    private static async Task EnsureLikesAsync(AppDbContext db, CancellationToken ct)
+    private static async Task EnsureFollowsAsync(AppDbContext db, CancellationToken ct)
     {
-        var count = await db.UserLikes.CountAsync(ct);
+        var count = await db.UserFollows.CountAsync(ct);
         if (count >= 20) return;
 
-        var users = await db.Users!.OrderBy(u => u.Id).Select(u => u.Id).ToListAsync(ct);
+        var users = await db.Users.OrderBy(u => u.Id).Select(u => u.Id).ToListAsync(ct);
         if (users.Count < 2) return;
 
-        var allPhotos = await db.Photos!.AsNoTracking().ToListAsync(ct);
-        var photoIdByUser = allPhotos
-            .GroupBy(p => p.AppUserId)
-            .ToDictionary(g => g.Key, g => g.OrderByDescending(p => p.IsMain).First().Id);
-
-        var existing = await db.UserLikes
-            .Select(ul => $"{ul.SourceUserId}:{ul.TargetUserId}")
+        var existing = await db.UserFollows
+            .Select(f => $"{f.FollowerId}:{f.FollowingId}")
             .ToListAsync(ct);
         var existingSet = existing.ToHashSet();
 
         var needed = 20 - count;
         for (var i = 0; i < users.Count && needed > 0; i++)
         {
-            var source = users[i];
-            var target = users[(i + 1) % users.Count];
-            var key = $"{source}:{target}";
-            if (source == target || existingSet.Contains(key)) continue;
+            var follower = users[i];
+            var following = users[(i + 1) % users.Count];
+            var key = $"{follower}:{following}";
+            if (follower == following || existingSet.Contains(key)) continue;
 
-            db.UserLikes.Add(new UserLike
+            db.UserFollows.Add(new UserFollow
             {
-                SourceUserId = source,
-                TargetUserId = target,
-                TargetPhotoId = photoIdByUser.TryGetValue(target, out var pid) ? pid : null,
-                LikedAt = DateTime.UtcNow.AddDays(-30)
+                FollowerId = follower,
+                FollowingId = following,
+                FollowedAtUtc = DateTime.UtcNow.AddDays(-30)
             });
             existingSet.Add(key);
             needed--;
@@ -219,17 +214,50 @@ public static class DevDataSeeder
 
         for (var i = 0; i < users.Count && needed > 0; i++)
         {
-            var source = users[i];
-            var target = users[(i + 2) % users.Count];
-            var key = $"{source}:{target}";
-            if (source == target || existingSet.Contains(key)) continue;
+            var follower = users[i];
+            var following = users[(i + 2) % users.Count];
+            var key = $"{follower}:{following}";
+            if (follower == following || existingSet.Contains(key)) continue;
 
-            db.UserLikes.Add(new UserLike
+            db.UserFollows.Add(new UserFollow
             {
-                SourceUserId = source,
-                TargetUserId = target,
-                TargetPhotoId = photoIdByUser.TryGetValue(target, out var pid2) ? pid2 : null,
-                LikedAt = DateTime.UtcNow.AddDays(-30)
+                FollowerId = follower,
+                FollowingId = following,
+                FollowedAtUtc = DateTime.UtcNow.AddDays(-30)
+            });
+            existingSet.Add(key);
+            needed--;
+        }
+
+        await db.SaveChangesAsync(ct);
+    }
+
+    private static async Task EnsureBookmarksAsync(AppDbContext db, CancellationToken ct)
+    {
+        var count = await db.UserBookmarks.CountAsync(ct);
+        if (count >= 10) return;
+
+        var users = await db.Users.OrderBy(u => u.Id).Select(u => u.Id).ToListAsync(ct);
+        if (users.Count < 2) return;
+
+        var existing = await db.UserBookmarks
+            .Select(b => $"{b.UserId}:{b.BookmarkedUserId}")
+            .ToListAsync(ct);
+        var existingSet = existing.ToHashSet();
+
+        var needed = 10 - count;
+        for (var i = 0; i < users.Count && needed > 0; i++)
+        {
+            var userId = users[i];
+            var bookmarked = users[(i + 3) % users.Count];
+            var key = $"{userId}:{bookmarked}";
+            if (userId == bookmarked || existingSet.Contains(key)) continue;
+
+            db.UserBookmarks.Add(new UserBookmark
+            {
+                UserId = userId,
+                BookmarkedUserId = bookmarked,
+                SavedAtUtc = DateTime.UtcNow.AddDays(-7)
             });
             existingSet.Add(key);
             needed--;
@@ -243,7 +271,7 @@ public static class DevDataSeeder
         var count = await db.Messages.CountAsync(ct);
         if (count >= 20) return;
 
-        var users = await db.Users!.OrderBy(u => u.Id).Select(u => u.Id).ToListAsync(ct);
+        var users = await db.Users.OrderBy(u => u.Id).Select(u => u.Id).ToListAsync(ct);
         if (users.Count < 2) return;
 
         var needed = 20 - count;

@@ -5,9 +5,10 @@ namespace API.Data;
 
 public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
-    public DbSet<AppUser>? Users { get; set; }
-    public DbSet<Photo>? Photos { get; set; }
-    public DbSet<UserLike> UserLikes { get; set; } = null!;
+    public DbSet<AppUser> Users { get; set; } = null!;
+    public DbSet<Photo> Photos { get; set; } = null!;
+    public DbSet<UserFollow> UserFollows { get; set; } = null!;
+    public DbSet<UserBookmark> UserBookmarks { get; set; } = null!;
     public DbSet<Message> Messages { get; set; } = null!;
     public DbSet<Hobby> Hobbies { get; set; } = null!;
     public DbSet<UserHobby> UserHobbies { get; set; } = null!;
@@ -18,7 +19,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         base.OnModelCreating(builder);
 
         ConfigureSubscriptions(builder);
-        ConfigureUserLikes(builder);
+        ConfigureUserFollows(builder);
+        ConfigureUserBookmarks(builder);
         ConfigureMessages(builder);
         ConfigureUserHobbies(builder);
         ConfigureUserIndexes(builder);
@@ -50,7 +52,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             {
                 Id = 1,
                 Name = "Free",
-                Description = "Daily like cap; who-liked-you is locked.",
+                Description = "Limited follows per day; follower list locked.",
                 MonthlyPriceUsd = 0,
                 UnlimitedLikes = false,
                 SeeWhoLikedYou = false,
@@ -60,7 +62,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             {
                 Id = 2,
                 Name = "Plus",
-                Description = "Unlimited likes and see who liked you.",
+                Description = "Unlimited follows and see your followers.",
                 MonthlyPriceUsd = 9.99m,
                 UnlimitedLikes = true,
                 SeeWhoLikedYou = true,
@@ -70,7 +72,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             {
                 Id = 3,
                 Name = "Premium",
-                Description = "Same as Plus with higher placement in discovery.",
+                Description = "Same as Plus with stronger feed placement.",
                 MonthlyPriceUsd = 19.99m,
                 UnlimitedLikes = true,
                 SeeWhoLikedYou = true,
@@ -78,28 +80,40 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             });
     }
 
-    private static void ConfigureUserLikes(ModelBuilder builder)
+    private static void ConfigureUserFollows(ModelBuilder builder)
     {
-        builder.Entity<UserLike>()
-            .HasKey(ul => new { ul.SourceUserId, ul.TargetUserId });
+        builder.Entity<UserFollow>()
+            .HasKey(f => new { f.FollowerId, f.FollowingId });
 
-        builder.Entity<UserLike>()
-            .HasOne(ul => ul.SourceUser)
-            .WithMany(u => u.LikedUsers)
-            .HasForeignKey(ul => ul.SourceUserId)
+        builder.Entity<UserFollow>()
+            .HasOne(f => f.Follower)
+            .WithMany(u => u.Following)
+            .HasForeignKey(f => f.FollowerId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.Entity<UserLike>()
-            .HasOne(ul => ul.TargetUser)
-            .WithMany(u => u.LikedByUsers)
-            .HasForeignKey(ul => ul.TargetUserId)
+        builder.Entity<UserFollow>()
+            .HasOne(f => f.Following)
+            .WithMany(u => u.Followers)
+            .HasForeignKey(f => f.FollowingId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+
+    private static void ConfigureUserBookmarks(ModelBuilder builder)
+    {
+        builder.Entity<UserBookmark>()
+            .HasKey(b => new { b.UserId, b.BookmarkedUserId });
+
+        builder.Entity<UserBookmark>()
+            .HasOne(b => b.User)
+            .WithMany(u => u.Bookmarks)
+            .HasForeignKey(b => b.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.Entity<UserLike>()
-            .HasOne(ul => ul.TargetPhoto)
+        builder.Entity<UserBookmark>()
+            .HasOne(b => b.BookmarkedUser)
             .WithMany()
-            .HasForeignKey(ul => ul.TargetPhotoId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .HasForeignKey(b => b.BookmarkedUserId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 
     private static void ConfigureMessages(ModelBuilder builder)
