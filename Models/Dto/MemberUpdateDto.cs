@@ -10,6 +10,12 @@ public record MemberUpdateDto
     [MaxLength(1000)]
     public string? Bio { get; init; }
 
+    [MaxLength(200)]
+    public string? Headline { get; init; }
+
+    [MaxLength(2000)]
+    public string? ProfileLinks { get; init; }
+
     public string? Gender { get; init; }
     public string? LookingFor { get; init; }
     public DateOnly? DateOfBirth { get; init; }
