@@ -23,8 +23,8 @@ public class AccountService(IUserRepository userRepo, ITokenService tokenService
             UserName = dto.UserName.ToLowerInvariant(),
             Email = dto.Email.ToLowerInvariant(),
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
-            Gender = dto.Gender,
-            LookingFor = dto.LookingFor,
+            Gender = dto.Gender ?? "unspecified",
+            LookingFor = dto.LookingFor ?? "unspecified",
             Bio = dto.Bio,
             KnownAs = dto.KnownAs ?? dto.UserName,
             DateOfBirth = dto.DateOfBirth,
@@ -46,7 +46,7 @@ public class AccountService(IUserRepository userRepo, ITokenService tokenService
             return null;
 
         var userWithPhotos = await userRepo.GetUserByUsernameWithPhotosAsync(user.UserName, ct);
-        var userDto = userWithPhotos == null ? MapToUserDto(user) : MapToUserDto(userWithPhotos);
+        var userDto = userWithPhotos == null ? UserService.MapToUserDto(user) : UserService.MapToUserDto(userWithPhotos);
         return (userDto, tokenService.CreateToken(user));
     }
 
@@ -64,7 +64,7 @@ public class AccountService(IUserRepository userRepo, ITokenService tokenService
 
         await subscriptionService.ReconcileUserAsync(user.Id, ct);
 
-        return (MapToUserDto(user), tokenService.CreateToken(user));
+        return (UserService.MapToUserDto(user), tokenService.CreateToken(user));
     }
 
     public async Task<bool> DeleteAccountAsync(int userId, CancellationToken ct = default)
@@ -74,41 +74,5 @@ public class AccountService(IUserRepository userRepo, ITokenService tokenService
 
         userRepo.Delete(user);
         return await userRepo.SaveAllAsync(ct);
-    }
-
-    private static UserDto MapToUserDto(AppUser user)
-    {
-        var photos = user.Photos ?? [];
-        return new UserDto
-    {
-        //var hobbies = user.UserHobbies ?? [];
-        Id = user.Id,
-        UserName = user.UserName,
-        KnownAs = user.KnownAs ?? user.UserName,
-        Age = GetAge(user.DateOfBirth),
-        Bio = user.Bio,
-        Gender = user.Gender,
-        LookingFor = user.LookingFor,
-        City = user.City,
-        Country = user.Country,
-        JobTitle = user.JobTitle,
-        PhotoUrl = photos.FirstOrDefault(p => p.IsMain)?.Url,
-        LastActive = user.LastActive,
-        Created = user.Created,
-        Photos = photos.Select(p => new PhotoDto { Id = p.Id, Url = p.Url, IsMain = p.IsMain }).ToList(),
-        Hobbies = (user.UserHobbies ?? [])
-            .Where(uh => uh.Hobby != null)
-            .Select(uh => new HobbyDto { Id = uh.HobbyId, Name = uh.Hobby.Name })
-            .OrderBy(h => h.Name)
-            .ToList(),
-        Subscription = SubscriptionEntitlements.ToSummary(user)
-        };
-    }
-
-    private static int GetAge(DateOnly dob)
-    {
-        var age = DateTime.Today.Year - dob.Year;
-        if (dob > DateOnly.FromDateTime(DateTime.Today.AddYears(-age))) age--;
-        return age;
     }
 }

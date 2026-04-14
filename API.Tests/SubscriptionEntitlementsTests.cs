@@ -51,8 +51,8 @@ public class SubscriptionEntitlementsTests
     {
         var u = UserWithPlan(1, Free, null);
         Assert.False(SubscriptionEntitlements.PaidSubscriptionIsActive(u));
-        Assert.False(SubscriptionEntitlements.HasUnlimitedLikes(u));
-        Assert.False(SubscriptionEntitlements.CanSeeWhoLikedYou(u));
+        Assert.False(SubscriptionEntitlements.HasUnlimitedFollows(u));
+        Assert.False(SubscriptionEntitlements.CanSeeFollowersList(u));
     }
 
     [Fact]
@@ -60,8 +60,8 @@ public class SubscriptionEntitlementsTests
     {
         var u = UserWithPlan(2, Plus, DateTime.UtcNow.AddDays(7));
         Assert.True(SubscriptionEntitlements.PaidSubscriptionIsActive(u));
-        Assert.True(SubscriptionEntitlements.HasUnlimitedLikes(u));
-        Assert.True(SubscriptionEntitlements.CanSeeWhoLikedYou(u));
+        Assert.True(SubscriptionEntitlements.HasUnlimitedFollows(u));
+        Assert.True(SubscriptionEntitlements.CanSeeFollowersList(u));
     }
 
     [Fact]
@@ -69,7 +69,7 @@ public class SubscriptionEntitlementsTests
     {
         var u = UserWithPlan(2, Plus, DateTime.UtcNow.AddDays(-1), autoRenew: true);
         Assert.False(SubscriptionEntitlements.PaidSubscriptionIsActive(u));
-        Assert.False(SubscriptionEntitlements.HasUnlimitedLikes(u));
+        Assert.False(SubscriptionEntitlements.HasUnlimitedFollows(u));
     }
 
     [Fact]
@@ -77,6 +77,16 @@ public class SubscriptionEntitlementsTests
     {
         var u = UserWithPlan(2, Plus, null);
         Assert.True(SubscriptionEntitlements.PaidSubscriptionIsActive(u));
-        Assert.True(SubscriptionEntitlements.HasUnlimitedLikes(u));
+        Assert.True(SubscriptionEntitlements.HasUnlimitedFollows(u));
+    }
+
+    [Fact]
+    public void Summary_maps_plan_flags_to_social_dto_names()
+    {
+        var u = UserWithPlan(2, Plus, DateTime.UtcNow.AddDays(7));
+        var s = SubscriptionEntitlements.ToSummary(u);
+        Assert.True(s.UnlimitedFollows);
+        Assert.True(s.SeeFollowersList);
+        Assert.False(s.PriorityInFeed);
     }
 }
