@@ -56,12 +56,9 @@ public static class DevDataSeeder
                 UserName = username,
                 Email = $"{username}@example.com",
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword("Demo123A"),
-                Gender = i % 2 == 0 ? "male" : "female",
-                LookingFor = "any",
                 KnownAs = $"Demo {i}",
                 Bio = "Seeded demo profile",
                 JobTitle = i % 3 == 0 ? "Software Engineer" : i % 3 == 1 ? "Teacher" : "Designer",
-                DateOfBirth = new DateOnly(1995, 1, 1).AddDays(i * 30),
                 City = "Seed City",
                 Country = "Seed Country",
                 IsAdmin = false
@@ -89,13 +86,13 @@ public static class DevDataSeeder
             {
                 list[i].SubscriptionPlanId = 3;
                 list[i].SubscriptionEndsUtc = DateTime.UtcNow.AddYears(1);
-                list[i].DiscoveryBoostCached = 1;
+                list[i].FeedBoostCached = 1;
             }
             else if (i < 10)
             {
                 list[i].SubscriptionPlanId = 2;
                 list[i].SubscriptionEndsUtc = DateTime.UtcNow.AddMonths(6);
-                list[i].DiscoveryBoostCached = 0;
+                list[i].FeedBoostCached = 0;
             }
         }
 

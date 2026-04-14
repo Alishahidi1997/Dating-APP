@@ -7,9 +7,9 @@ public class SubscriptionPlan
     public required string Description { get; set; }
     public decimal MonthlyPriceUsd { get; set; }
 
-    public bool UnlimitedLikes { get; set; }
-    public bool SeeWhoLikedYou { get; set; }
-    public bool PriorityInDiscovery { get; set; }
+    public bool UnlimitedFollows { get; set; }
+    public bool SeeFollowersList { get; set; }
+    public bool PriorityInFeed { get; set; }
 
     public ICollection<AppUser> Subscribers { get; set; } = [];
 }

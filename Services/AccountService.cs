@@ -14,20 +14,13 @@ public class AccountService(IUserRepository userRepo, ITokenService tokenService
         if (await userRepo.GetUserByEmailAsync(dto.Email.ToLowerInvariant(), ct) != null)
             return null;
 
-        var age = DateTime.Today.Year - dto.DateOfBirth.Year;
-        if (dto.DateOfBirth > DateOnly.FromDateTime(DateTime.Today.AddYears(-age))) age--;
-        if (age < 18) return null;
-
         var user = new AppUser
         {
             UserName = dto.UserName.ToLowerInvariant(),
             Email = dto.Email.ToLowerInvariant(),
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
-            Gender = dto.Gender ?? "unspecified",
-            LookingFor = dto.LookingFor ?? "unspecified",
             Bio = dto.Bio,
             KnownAs = dto.KnownAs ?? dto.UserName,
-            DateOfBirth = dto.DateOfBirth,
             City = dto.City,
             Country = dto.Country,
             JobTitle = dto.JobTitle

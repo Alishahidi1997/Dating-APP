@@ -15,7 +15,7 @@ public class AccountController(IAccountService accountService) : ControllerBase
     {
         var result = await accountService.RegisterAsync(dto, ct);
         if (result == null)
-            return BadRequest("Username or email already exists, or you must be 18+");
+            return BadRequest("Username or email already exists");
 
         return Ok(new { result.Value.User, Token = result.Value.Token });
     }

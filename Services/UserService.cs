@@ -28,9 +28,6 @@ public class UserService(IUserRepository userRepo) : IUserService
         if (dto.Bio != null) user.Bio = dto.Bio;
         if (dto.Headline != null) user.Headline = dto.Headline;
         if (dto.ProfileLinks != null) user.ProfileLinks = dto.ProfileLinks;
-        if (dto.Gender != null) user.Gender = dto.Gender;
-        if (dto.LookingFor != null) user.LookingFor = dto.LookingFor;
-        if (dto.DateOfBirth.HasValue) user.DateOfBirth = dto.DateOfBirth.Value;
         if (dto.City != null) user.City = dto.City;
         if (dto.Country != null) user.Country = dto.Country;
         if (dto.JobTitle != null) user.JobTitle = dto.JobTitle;
@@ -87,13 +84,10 @@ public class UserService(IUserRepository userRepo) : IUserService
         Id = user.Id,
         UserName = user.UserName,
         KnownAs = user.KnownAs ?? user.UserName,
-        Age = GetAge(user.DateOfBirth),
         Bio = user.Bio,
         Headline = user.Headline,
         ProfileLinks = user.ProfileLinks,
         IsVerified = user.IsVerified,
-        Gender = user.Gender,
-        LookingFor = user.LookingFor,
         City = user.City,
         Country = user.Country,
         JobTitle = user.JobTitle,
@@ -108,11 +102,4 @@ public class UserService(IUserRepository userRepo) : IUserService
             .ToList(),
         Subscription = SubscriptionEntitlements.ToSummary(user)
     };
-
-    private static int GetAge(DateOnly dob)
-    {
-        var age = DateTime.Today.Year - dob.Year;
-        if (dob > DateOnly.FromDateTime(DateTime.Today.AddYears(-age))) age--;
-        return age;
-    }
 }

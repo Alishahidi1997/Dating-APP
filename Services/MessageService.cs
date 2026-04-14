@@ -16,7 +16,6 @@ public class MessageService(IMessageRepository messageRepo, IUserRepository user
         var sender = await userRepo.GetUserByIdAsync(senderId, ct);
         if (sender == null) return null;
 
-        // Check if they've liked each other (match) - optional: allow messaging only between matches
         var message = new Message
         {
             SenderId = senderId,

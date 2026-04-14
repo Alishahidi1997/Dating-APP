@@ -8,15 +8,12 @@ public class AppUser
     public required string UserName { get; set; }
     public required string Email { get; set; }
     public required string PasswordHash { get; set; }
-    public required string Gender { get; set; }
-    public required string LookingFor { get; set; }
     public string? Bio { get; set; }
     public string? KnownAs { get; set; }
     [MaxLength(200)]
     public string? Headline { get; set; }
     public string? ProfileLinks { get; set; }
     public bool IsVerified { get; set; }
-    public DateOnly DateOfBirth { get; set; }
     public DateTime Created { get; set; } = DateTime.UtcNow;
     public DateTime LastActive { get; set; } = DateTime.UtcNow;
     public string? City { get; set; }
@@ -29,7 +26,7 @@ public class AppUser
     public DateTime? SubscriptionEndsUtc { get; set; }
     public bool SubscriptionAutoRenew { get; set; } = true;
     public int SubscriptionRenewalDays { get; set; } = 30;
-    public int DiscoveryBoostCached { get; set; }
+    public int FeedBoostCached { get; set; }
 
     public ICollection<Photo> Photos { get; set; } = [];
     public ICollection<UserFollow> Following { get; set; } = [];

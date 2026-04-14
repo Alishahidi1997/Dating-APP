@@ -13,9 +13,6 @@ public class SubscriptionEntitlementsTests
             UserName = "t",
             Email = "t@test.com",
             PasswordHash = "x",
-            Gender = "any",
-            LookingFor = "any",
-            DateOfBirth = new DateOnly(1995, 1, 1),
             SubscriptionPlanId = planId,
             SubscriptionPlan = plan,
             SubscriptionEndsUtc = endsUtc,
@@ -30,9 +27,9 @@ public class SubscriptionEntitlementsTests
         Name = "Free",
         Description = "f",
         MonthlyPriceUsd = 0,
-        UnlimitedLikes = false,
-        SeeWhoLikedYou = false,
-        PriorityInDiscovery = false
+        UnlimitedFollows = false,
+        SeeFollowersList = false,
+        PriorityInFeed = false
     };
 
     private static SubscriptionPlan Plus => new()
@@ -41,9 +38,9 @@ public class SubscriptionEntitlementsTests
         Name = "Plus",
         Description = "p",
         MonthlyPriceUsd = 9.99m,
-        UnlimitedLikes = true,
-        SeeWhoLikedYou = true,
-        PriorityInDiscovery = false
+        UnlimitedFollows = true,
+        SeeFollowersList = true,
+        PriorityInFeed = false
     };
 
     [Fact]
@@ -81,7 +78,7 @@ public class SubscriptionEntitlementsTests
     }
 
     [Fact]
-    public void Summary_maps_plan_flags_to_social_dto_names()
+    public void Summary_maps_plan_flags()
     {
         var u = UserWithPlan(2, Plus, DateTime.UtcNow.AddDays(7));
         var s = SubscriptionEntitlements.ToSummary(u);

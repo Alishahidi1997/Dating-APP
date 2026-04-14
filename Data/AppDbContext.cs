@@ -54,9 +54,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 Name = "Free",
                 Description = "Limited follows per day; follower list locked.",
                 MonthlyPriceUsd = 0,
-                UnlimitedLikes = false,
-                SeeWhoLikedYou = false,
-                PriorityInDiscovery = false
+                UnlimitedFollows = false,
+                SeeFollowersList = false,
+                PriorityInFeed = false
             },
             new SubscriptionPlan
             {
@@ -64,9 +64,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 Name = "Plus",
                 Description = "Unlimited follows and see your followers.",
                 MonthlyPriceUsd = 9.99m,
-                UnlimitedLikes = true,
-                SeeWhoLikedYou = true,
-                PriorityInDiscovery = false
+                UnlimitedFollows = true,
+                SeeFollowersList = true,
+                PriorityInFeed = false
             },
             new SubscriptionPlan
             {
@@ -74,9 +74,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
                 Name = "Premium",
                 Description = "Same as Plus with stronger feed placement.",
                 MonthlyPriceUsd = 19.99m,
-                UnlimitedLikes = true,
-                SeeWhoLikedYou = true,
-                PriorityInDiscovery = true
+                UnlimitedFollows = true,
+                SeeFollowersList = true,
+                PriorityInFeed = true
             });
     }
 

@@ -21,10 +21,6 @@ public class UsersController(IUserService userService, ISubscriptionService subs
     public async Task<ActionResult<PagedResultDto<UserDto>>> GetFeed([FromQuery] UserParams userParams, CancellationToken ct) =>
         Ok(await userService.GetFeedAsync(UserId, userParams, ct));
 
-    [HttpGet("discovery")]
-    public async Task<ActionResult<PagedResultDto<UserDto>>> GetDiscoveryAlias([FromQuery] UserParams userParams, CancellationToken ct) =>
-        Ok(await userService.GetFeedAsync(UserId, userParams, ct));
-
     [HttpGet("hobbies")]
     public async Task<ActionResult<IReadOnlyList<HobbyDto>>> GetHobbies(CancellationToken ct) =>
         Ok(await userService.GetHobbyOptionsAsync(ct));
@@ -46,21 +42,17 @@ public class UsersController(IUserService userService, ISubscriptionService subs
     public async Task<ActionResult<IEnumerable<UserDto>>> GetConnections(CancellationToken ct) =>
         Ok(await userService.GetConnectionsAsync(UserId, ct));
 
-    [HttpGet("matches")]
-    public async Task<ActionResult<IEnumerable<UserDto>>> GetMatchesAlias(CancellationToken ct) =>
-        Ok(await userService.GetConnectionsAsync(UserId, ct));
-
     [HttpGet("following")]
     public async Task<ActionResult<IEnumerable<FollowListMemberDto>>> GetFollowingList([FromQuery] string list, CancellationToken ct)
     {
         if (string.IsNullOrEmpty(list))
-            return BadRequest("Query parameter 'list' is required (following, followers, or legacy liked / likedby).");
+            return BadRequest("Query parameter 'list' is required (following or followers).");
 
         var normalized = list.ToLowerInvariant();
-        if (normalized is not ("following" or "followers" or "liked" or "likedby"))
-            return BadRequest("list must be 'following', 'followers', 'liked', or 'likedby'.");
+        if (normalized is not ("following" or "followers"))
+            return BadRequest("list must be 'following' or 'followers'.");
 
-        if (normalized is "followers" or "likedby")
+        if (normalized is "followers")
         {
             var summary = await subscriptionService.GetMySummaryAsync(UserId, ct);
             if (summary is null)
@@ -71,25 +63,6 @@ public class UsersController(IUserService userService, ISubscriptionService subs
         }
 
         return Ok(await userService.GetFollowListAsync(UserId, list, ct));
-    }
-
-    [HttpGet("likes")]
-    public async Task<ActionResult<IEnumerable<FollowListMemberDto>>> GetLikesLegacy([FromQuery] string predicate, CancellationToken ct)
-    {
-        if (string.IsNullOrEmpty(predicate) || (predicate != "liked" && predicate != "likedby"))
-            return BadRequest("Predicate must be 'liked' or 'likedby' (maps to following / followers).");
-
-        if (string.Equals(predicate, "likedby", StringComparison.OrdinalIgnoreCase))
-        {
-            var summary = await subscriptionService.GetMySummaryAsync(UserId, ct);
-            if (summary is null)
-                return NotFound();
-            if (!summary.SeeFollowersList)
-                return StatusCode(StatusCodes.Status403Forbidden,
-                    "Plus or Premium required to see your followers list.");
-        }
-
-        return Ok(await userService.GetFollowListAsync(UserId, predicate, ct));
     }
 
     [HttpGet("{username}")]

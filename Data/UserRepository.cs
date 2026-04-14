@@ -50,21 +50,6 @@ public class UserRepository(AppDbContext context) : IUserRepository
             .Include(u => u.UserHobbies).ThenInclude(uh => uh.Hobby)
             .Where(u => u.Id != userId);
 
-        var oldestAllowedDob = DateOnly.FromDateTime(DateTime.Today.AddYears(-18));
-        query = query.Where(u => u.DateOfBirth <= oldestAllowedDob);
-
-        if (userParams.MinAge.HasValue || userParams.MaxAge.HasValue)
-        {
-            var minAge = userParams.MinAge ?? 18;
-            var maxAge = userParams.MaxAge ?? 120;
-            var minDob = DateOnly.FromDateTime(DateTime.Today.AddYears(-maxAge));
-            var maxDob = DateOnly.FromDateTime(DateTime.Today.AddYears(-minAge));
-            query = query.Where(u => u.DateOfBirth >= minDob && u.DateOfBirth <= maxDob);
-        }
-
-        if (!string.IsNullOrWhiteSpace(userParams.Gender))
-            query = query.Where(u => u.Gender == userParams.Gender);
-
         var hobbyIds = ParseHobbyIds(userParams.HobbyIds);
         if (hobbyIds.Count > 0)
             query = query.Where(u => u.UserHobbies.Any(uh => hobbyIds.Contains(uh.HobbyId)));
@@ -77,8 +62,8 @@ public class UserRepository(AppDbContext context) : IUserRepository
 
         query = userParams.OrderBy.ToLowerInvariant() switch
         {
-            "created" => query.OrderByDescending(u => u.DiscoveryBoostCached).ThenByDescending(u => u.Created),
-            _ => query.OrderByDescending(u => u.DiscoveryBoostCached).ThenByDescending(u => u.LastActive)
+            "created" => query.OrderByDescending(u => u.FeedBoostCached).ThenByDescending(u => u.Created),
+            _ => query.OrderByDescending(u => u.FeedBoostCached).ThenByDescending(u => u.LastActive)
         };
 
         var totalCount = await query.CountAsync(ct);
@@ -107,8 +92,8 @@ public class UserRepository(AppDbContext context) : IUserRepository
     {
         return list.ToLowerInvariant() switch
         {
-            "following" or "liked" => await LoadFollowingAsync(userId, ct),
-            "followers" or "likedby" => await LoadFollowersAsync(userId, ct),
+            "following" => await LoadFollowingAsync(userId, ct),
+            "followers" => await LoadFollowersAsync(userId, ct),
             _ => []
         };
     }

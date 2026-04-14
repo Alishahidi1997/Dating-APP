@@ -1,8 +1,8 @@
 # Social Networking API
 
 
-.NET API for a Social Networking App.  
-It has auth, profiles, likes, matches, messages, photos, hobbies, and subscription tiers.
+.NET API for a social networking app.  
+It has auth, profiles, feed, follows, connections, bookmarks, messages, photos, hobbies (interests), and subscription tiers.
 
 ## Run It
 
@@ -17,9 +17,9 @@ dotnet run
 ## What It Does
 
 - JWT login/register
-- Profile edit (`knownAs`, bio, city, country, `jobTitle`, hobbies)
-- Discovery feed with filters + paging
-- Likes + matches
+- Profile edit (`knownAs`, bio, headline, profile links, city, country, `jobTitle`, hobbies)
+- Home feed with optional hobby-topic filter + paging (`GET /api/users` or `GET /api/users/feed`)
+- Follow / unfollow, mutual connections, bookmarks
 - Messaging (inbox/outbox/thread/read/delete)
 - Photo upload + set main + delete
 - Account delete
@@ -28,9 +28,9 @@ dotnet run
 
 Three plans are built in:
 
-- **Free**: up to 20 new likes per UTC day
-- **Plus**: unlimited likes + can see who liked you
-- **Premium**: everything in Plus + boosted discovery ranking
+- **Free**: up to 20 new follows per UTC day; followers list locked
+- **Plus**: unlimited follows + can see your followers list
+- **Premium**: everything in Plus + stronger feed placement
 
 Plan endpoints:
 
@@ -45,8 +45,8 @@ Plan endpoints:
 
 Notes:
 
-- Like limit applies only to Free users.
-- `GET /api/users/likes?predicate=likedby` requires Plus/Premium.
+- Follow limit applies only to Free users.
+- `GET /api/users/following?list=followers` requires Plus/Premium.
 
 ## Useful Endpoints
 
@@ -58,14 +58,14 @@ Public:
 
 Auth required:
 
-- `GET /api/users/discovery`
+- `GET /api/users` or `GET /api/users/feed` (paged feed)
 - `GET /api/users/{username}`
 - `PUT /api/users`
-- `GET /api/users/hobbies`
-- `GET /api/users/matches`
-- `GET /api/users/likes?predicate=liked|likedby`
-- `POST /api/likes/{targetUserId}`
-  - Optional body: `{ "photoId": 5 }` (photo must belong to target user)
+- `GET /api/users/hobbies` or `GET /api/users/interests`
+- `GET /api/users/connections` (mutual follows)
+- `GET /api/users/following?list=following|followers`
+- `POST` / `DELETE /api/follow/{userId}`
+- `POST` / `DELETE /api/bookmarks/{userId}`
 - `POST /api/messages`
 - `GET /api/messages`
 - `GET /api/messages/thread/{recipientId}`
@@ -85,7 +85,7 @@ Admin/dev note:
 
 Set in `appsettings.json` / `appsettings.Development.json`:
 
-- `ConnectionStrings:DefaultConnection`
+- `ConnectionStrings:DefaultConnection` (default SQLite file: `socialapp.db`)
 - `TokenKey` (64+ chars)
 - `AdminUserNames` (optional, comma-separated)
 
@@ -105,5 +105,4 @@ Stop the running API first if Windows locks `API.dll` during build.
 dotnet ef migrations add MigrationName
 dotnet ef database update
 ```
-
 

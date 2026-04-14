@@ -16,10 +16,6 @@ public record MemberUpdateDto
     [MaxLength(2000)]
     public string? ProfileLinks { get; init; }
 
-    public string? Gender { get; init; }
-    public string? LookingFor { get; init; }
-    public DateOnly? DateOfBirth { get; init; }
-
     [MaxLength(100)]
     public string? City { get; init; }
 

@@ -19,21 +19,21 @@ public static class SubscriptionEntitlements
     {
         if (user.SubscriptionPlan == null) return false;
         if (!PaidSubscriptionIsActive(user)) return false;
-        return user.SubscriptionPlan.UnlimitedLikes;
+        return user.SubscriptionPlan.UnlimitedFollows;
     }
 
     public static bool CanSeeFollowersList(AppUser user)
     {
         if (user.SubscriptionPlan == null) return false;
         if (!PaidSubscriptionIsActive(user)) return false;
-        return user.SubscriptionPlan.SeeWhoLikedYou;
+        return user.SubscriptionPlan.SeeFollowersList;
     }
 
     public static int FeedBoostFor(AppUser user)
     {
         if (user.SubscriptionPlan == null) return 0;
         if (!PaidSubscriptionIsActive(user)) return 0;
-        return user.SubscriptionPlan.PriorityInDiscovery ? 1 : 0;
+        return user.SubscriptionPlan.PriorityInFeed ? 1 : 0;
     }
 
     public static SubscriptionSummaryDto ToSummary(AppUser user)
@@ -61,9 +61,9 @@ public static class SubscriptionEntitlements
             {
                 PlanId = plan.Id,
                 PlanName = plan.Name,
-                UnlimitedFollows = plan.UnlimitedLikes,
-                SeeFollowersList = plan.SeeWhoLikedYou,
-                PriorityInFeed = plan.PriorityInDiscovery,
+                UnlimitedFollows = plan.UnlimitedFollows,
+                SeeFollowersList = plan.SeeFollowersList,
+                PriorityInFeed = plan.PriorityInFeed,
                 SubscriptionExpiresUtc = null,
                 IsPaidPlanActive = false,
                 AutoRenew = false,
@@ -92,9 +92,9 @@ public static class SubscriptionEntitlements
         {
             PlanId = plan.Id,
             PlanName = plan.Name,
-            UnlimitedFollows = plan.UnlimitedLikes,
-            SeeFollowersList = plan.SeeWhoLikedYou,
-            PriorityInFeed = plan.PriorityInDiscovery,
+            UnlimitedFollows = plan.UnlimitedFollows,
+            SeeFollowersList = plan.SeeFollowersList,
+            PriorityInFeed = plan.PriorityInFeed,
             SubscriptionExpiresUtc = user.SubscriptionEndsUtc,
             IsPaidPlanActive = true,
             AutoRenew = user.SubscriptionAutoRenew,

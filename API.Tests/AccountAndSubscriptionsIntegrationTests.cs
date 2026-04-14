@@ -9,12 +9,10 @@ namespace API.Tests;
 
 public class AccountAndSubscriptionsIntegrationTests : IClassFixture<ApiWebApplicationFactory>, IDisposable
 {
-    private readonly ApiWebApplicationFactory _factory;
     private readonly HttpClient _client;
 
     public AccountAndSubscriptionsIntegrationTests(ApiWebApplicationFactory factory)
     {
-        _factory = factory;
         _client = factory.CreateClient();
     }
 
@@ -42,10 +40,7 @@ public class AccountAndSubscriptionsIntegrationTests : IClassFixture<ApiWebAppli
         {
             UserName = name,
             Email = $"{name}@test.com",
-            Password = "Aa123456",
-            Gender = "male",
-            LookingFor = "any",
-            DateOfBirth = new DateOnly(1995, 1, 1)
+            Password = "Aa123456"
         });
         Assert.Equal(HttpStatusCode.OK, reg.StatusCode);
 
@@ -68,17 +63,11 @@ public class AccountAndSubscriptionsIntegrationTests : IClassFixture<ApiWebAppli
         {
             UserName = name,
             Email = $"{name}@test.com",
-            Password = "Aa123456",
-            Gender = "female",
-            LookingFor = "any",
-            DateOfBirth = new DateOnly(1995, 1, 1)
+            Password = "Aa123456"
         });
 
         var token = await LoginAndGetTokenAsync(_client, name, "Aa123456");
         _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-
-        var legacy = await _client.GetAsync("/api/users/likes?predicate=likedby");
-        Assert.Equal(HttpStatusCode.Forbidden, legacy.StatusCode);
 
         var followers = await _client.GetAsync("/api/users/following?list=followers");
         Assert.Equal(HttpStatusCode.Forbidden, followers.StatusCode);
@@ -92,10 +81,7 @@ public class AccountAndSubscriptionsIntegrationTests : IClassFixture<ApiWebAppli
         {
             UserName = name,
             Email = $"{name}@test.com",
-            Password = "Aa123456",
-            Gender = "male",
-            LookingFor = "any",
-            DateOfBirth = new DateOnly(1995, 1, 1)
+            Password = "Aa123456"
         });
 
         var token = await LoginAndGetTokenAsync(_client, name, "Aa123456");

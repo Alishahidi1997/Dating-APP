@@ -40,8 +40,7 @@ public class SocialProfileAndFollowIntegrationTests : IClassFixture<ApiWebApplic
         {
             UserName = name,
             Email = $"{name}@test.com",
-            Password = "Aa123456",
-            DateOfBirth = new DateOnly(1995, 1, 1)
+            Password = "Aa123456"
         });
         Assert.Equal(HttpStatusCode.OK, reg.StatusCode);
 
@@ -75,15 +74,13 @@ public class SocialProfileAndFollowIntegrationTests : IClassFixture<ApiWebApplic
         {
             UserName = a,
             Email = $"{a}@test.com",
-            Password = "Aa123456",
-            DateOfBirth = new DateOnly(1994, 6, 1)
+            Password = "Aa123456"
         });
         var regB = await _client.PostAsJsonAsync("/api/account/register", new RegisterDto
         {
             UserName = b,
             Email = $"{b}@test.com",
-            Password = "Aa123456",
-            DateOfBirth = new DateOnly(1993, 3, 15)
+            Password = "Aa123456"
         });
         Assert.Equal(HttpStatusCode.OK, regA.StatusCode);
         Assert.Equal(HttpStatusCode.OK, regB.StatusCode);

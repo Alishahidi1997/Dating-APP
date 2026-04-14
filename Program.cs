@@ -34,7 +34,7 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 builder.Services.AddDbContext<AppDbContext>(opt =>
-    opt.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=datingapp.db"));
+    opt.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection") ?? "Data Source=socialapp.db"));
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();

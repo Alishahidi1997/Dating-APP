@@ -15,18 +15,11 @@ public record RegisterDto
         ErrorMessage = "Password must contain uppercase, lowercase, and number")]
     public required string Password { get; init; }
 
-    public string? Gender { get; init; }
-
-    public string? LookingFor { get; init; }
-
     [MaxLength(500)]
     public string? Bio { get; init; }
 
     [MaxLength(100)]
     public string? KnownAs { get; init; }
-
-    [Required]
-    public DateOnly DateOfBirth { get; init; }
 
     [MaxLength(100)]
     public string? City { get; init; }
