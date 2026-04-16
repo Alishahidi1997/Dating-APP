@@ -5,7 +5,7 @@ namespace API.Services;
 
 public interface IUserService
 {
-    Task<UserDto?> GetUserAsync(string username, CancellationToken ct = default);
+    Task<UserDto?> GetUserAsync(string username, int viewerUserId, CancellationToken ct = default);
     Task<UserDto?> GetUserByIdAsync(int id, CancellationToken ct = default);
     Task<bool> UpdateMemberAsync(int userId, MemberUpdateDto dto, CancellationToken ct = default);
     Task<PagedResultDto<UserDto>> GetFeedAsync(int userId, UserParams userParams, CancellationToken ct = default);

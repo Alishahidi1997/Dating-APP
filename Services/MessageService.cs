@@ -4,7 +4,10 @@ using API.Models.Dto;
 
 namespace API.Services;
 
-public class MessageService(IMessageRepository messageRepo, IUserRepository userRepo) : IMessageService
+public class MessageService(
+    IMessageRepository messageRepo,
+    IUserRepository userRepo,
+    IUserModerationRepository moderationRepo) : IMessageService
 {
     public async Task<MessageDto?> CreateMessageAsync(int senderId, CreateMessageDto dto, CancellationToken ct = default)
     {
@@ -15,6 +18,9 @@ public class MessageService(IMessageRepository messageRepo, IUserRepository user
 
         var sender = await userRepo.GetUserByIdAsync(senderId, ct);
         if (sender == null) return null;
+
+        if (await moderationRepo.IsBlockedEitherWayAsync(senderId, dto.RecipientId, ct))
+            return null;
 
         var message = new Message
         {
@@ -41,6 +47,9 @@ public class MessageService(IMessageRepository messageRepo, IUserRepository user
 
     public async Task<IEnumerable<MessageDto>> GetMessageThreadAsync(int userId, int recipientId, CancellationToken ct = default)
     {
+        if (await moderationRepo.IsBlockedEitherWayAsync(userId, recipientId, ct))
+            return [];
+
         var messages = await messageRepo.GetMessageThreadAsync(userId, recipientId, ct);
         return messages.Select(MapToMessageDto);
     }

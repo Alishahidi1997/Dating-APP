@@ -6,6 +6,7 @@ namespace API.Services;
 public class FollowService(
     IFollowRepository followRepo,
     IUserRepository userRepo,
+    IUserModerationRepository moderationRepo,
     ISubscriptionService subscriptionService) : IFollowService
 {
     private const int MaxFollowsPerUtcDay = 20;
@@ -24,6 +25,9 @@ public class FollowService(
         var following = await userRepo.GetUserByIdAsync(followingId, ct);
         if (following == null)
             return FollowAddResult.InvalidTarget;
+
+        if (await moderationRepo.IsBlockedEitherWayAsync(followerId, followingId, ct))
+            return FollowAddResult.BlockedUser;
 
         if (await followRepo.GetFollowAsync(followerId, followingId, ct) != null)
             return FollowAddResult.AlreadyFollowing;

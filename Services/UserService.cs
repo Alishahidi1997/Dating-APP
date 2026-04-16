@@ -4,13 +4,17 @@ using API.Models.Dto;
 
 namespace API.Services;
 
-public class UserService(IUserRepository userRepo) : IUserService
+public class UserService(IUserRepository userRepo, IUserModerationRepository moderationRepo) : IUserService
 {
-    public async Task<UserDto?> GetUserAsync(string username, CancellationToken ct = default)
+    public async Task<UserDto?> GetUserAsync(string username, int viewerUserId, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(username)) return null;
         var user = await userRepo.GetUserByUsernameWithPhotosAsync(username.ToLowerInvariant(), ct);
-        return user == null ? null : MapToUserDto(user);
+        if (user == null) return null;
+        if (user.Id != viewerUserId && await moderationRepo.IsBlockedEitherWayAsync(viewerUserId, user.Id, ct))
+            return null;
+
+        return MapToUserDto(user);
     }
 
     public async Task<UserDto?> GetUserByIdAsync(int id, CancellationToken ct = default)

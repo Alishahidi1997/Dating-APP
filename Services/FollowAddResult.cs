@@ -6,5 +6,6 @@ public enum FollowAddResult
     AlreadyFollowing,
     InvalidTarget,
     DailyLimitReached,
+    BlockedUser,
     Failed
 }
