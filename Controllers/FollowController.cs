@@ -18,6 +18,7 @@ public class FollowController(IFollowService followService) : ControllerBase
         {
             FollowAddResult.Success or FollowAddResult.AlreadyFollowing => Ok(),
             FollowAddResult.InvalidTarget => BadRequest("Cannot follow yourself or user not found"),
+            FollowAddResult.BlockedUser => BadRequest("Cannot follow a user you have blocked or who has blocked you."),
             FollowAddResult.DailyLimitReached => StatusCode(StatusCodes.Status429TooManyRequests,
                 "You can start at most 20 follows per day (UTC) on the free plan."),
             FollowAddResult.Failed => BadRequest("Could not save follow"),

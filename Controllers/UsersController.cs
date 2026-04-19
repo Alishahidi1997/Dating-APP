@@ -68,7 +68,7 @@ public class UsersController(IUserService userService, ISubscriptionService subs
     [HttpGet("{username}")]
     public async Task<ActionResult<UserDto>> GetUser(string username, CancellationToken ct)
     {
-        var user = await userService.GetUserAsync(username, ct);
+        var user = await userService.GetUserAsync(username, UserId, ct);
         return user == null ? NotFound() : Ok(user);
     }
 

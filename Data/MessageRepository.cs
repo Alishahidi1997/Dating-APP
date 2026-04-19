@@ -42,6 +42,9 @@ public class MessageRepository(AppDbContext context) : IMessageRepository
             .Where(m =>
                 (m.SenderId == userId && m.RecipientId == recipientId && !m.SenderDeleted) ||
                 (m.SenderId == recipientId && m.RecipientId == userId && !m.RecipientDeleted))
+            .Where(m => !context.UserBlocks.Any(b =>
+                (b.BlockerId == userId && b.BlockedId == recipientId) ||
+                (b.BlockerId == recipientId && b.BlockedId == userId)))
             .OrderBy(m => m.MessageSent)
             .ToListAsync(ct);
 
@@ -52,21 +55,23 @@ public class MessageRepository(AppDbContext context) : IMessageRepository
 
         return container switch
         {
-            InboxContainer => context.Messages.FromSqlInterpolated($@"
-                SELECT * FROM Messages
-                WHERE RecipientId = {userId}
-                  AND RecipientDeleted = 0"),
+            InboxContainer => context.Messages
+                .Where(m => m.RecipientId == userId && !m.RecipientDeleted)
+                .Where(m => !context.UserBlocks.Any(b =>
+                    (b.BlockerId == userId && b.BlockedId == m.SenderId) ||
+                    (b.BlockerId == m.SenderId && b.BlockedId == userId))),
 
-            OutboxContainer => context.Messages.FromSqlInterpolated($@"
-                SELECT * FROM Messages
-                WHERE SenderId = {userId}
-                  AND SenderDeleted = 0"),
+            OutboxContainer => context.Messages
+                .Where(m => m.SenderId == userId && !m.SenderDeleted)
+                .Where(m => !context.UserBlocks.Any(b =>
+                    (b.BlockerId == userId && b.BlockedId == m.RecipientId) ||
+                    (b.BlockerId == m.RecipientId && b.BlockedId == userId))),
 
-            _ => context.Messages.FromSqlInterpolated($@"
-                SELECT * FROM Messages
-                WHERE RecipientId = {userId}
-                  AND RecipientDeleted = 0
-                  AND DateRead IS NULL")
+            _ => context.Messages
+                .Where(m => m.RecipientId == userId && !m.RecipientDeleted && m.DateRead == null)
+                .Where(m => !context.UserBlocks.Any(b =>
+                    (b.BlockerId == userId && b.BlockedId == m.SenderId) ||
+                    (b.BlockerId == m.SenderId && b.BlockedId == userId)))
         };
     }
 }

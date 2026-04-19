@@ -13,6 +13,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Hobby> Hobbies { get; set; } = null!;
     public DbSet<UserHobby> UserHobbies { get; set; } = null!;
     public DbSet<SubscriptionPlan> SubscriptionPlans { get; set; } = null!;
+    public DbSet<UserBlock> UserBlocks { get; set; } = null!;
+    public DbSet<UserMute> UserMutes { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -23,6 +25,8 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         ConfigureUserBookmarks(builder);
         ConfigureMessages(builder);
         ConfigureUserHobbies(builder);
+        ConfigureUserBlocks(builder);
+        ConfigureUserMutes(builder);
         ConfigureUserIndexes(builder);
 
         builder.Entity<Hobby>().HasData(
@@ -129,6 +133,42 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .WithMany(u => u.MessagesReceived)
             .HasForeignKey(m => m.RecipientId)
             .OnDelete(DeleteBehavior.Restrict);
+    }
+
+    private static void ConfigureUserBlocks(ModelBuilder builder)
+    {
+        builder.Entity<UserBlock>()
+            .HasKey(b => new { b.BlockerId, b.BlockedId });
+
+        builder.Entity<UserBlock>()
+            .HasOne(b => b.Blocker)
+            .WithMany()
+            .HasForeignKey(b => b.BlockerId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<UserBlock>()
+            .HasOne(b => b.Blocked)
+            .WithMany()
+            .HasForeignKey(b => b.BlockedId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+
+    private static void ConfigureUserMutes(ModelBuilder builder)
+    {
+        builder.Entity<UserMute>()
+            .HasKey(m => new { m.MuterId, m.MutedId });
+
+        builder.Entity<UserMute>()
+            .HasOne(m => m.Muter)
+            .WithMany()
+            .HasForeignKey(m => m.MuterId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<UserMute>()
+            .HasOne(m => m.Muted)
+            .WithMany()
+            .HasForeignKey(m => m.MutedId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 
     private static void ConfigureUserHobbies(ModelBuilder builder)
