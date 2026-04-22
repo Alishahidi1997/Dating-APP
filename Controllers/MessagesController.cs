@@ -3,6 +3,7 @@ using API.Models.Dto;
 using API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace API.Controllers;
 
@@ -14,6 +15,7 @@ public class MessagesController(IMessageService messageService) : ControllerBase
     private int UserId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     [HttpPost]
+    [EnableRateLimiting("MessageSendEndpoint")]
     public async Task<ActionResult<MessageDto>> CreateMessage([FromBody] CreateMessageDto dto, CancellationToken ct)
     {
         var message = await messageService.CreateMessageAsync(UserId, dto, ct);

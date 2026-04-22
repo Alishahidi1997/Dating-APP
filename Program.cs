@@ -5,11 +5,54 @@ using API.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddPolicy("AuthEndpoints", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: $"{httpContext.Connection.RemoteIpAddress}-auth",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 60,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+
+    options.AddPolicy("FollowEndpoint", httpContext =>
+    {
+        var userKey = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? $"{httpContext.Connection.RemoteIpAddress}";
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: $"{userKey}-follow",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 5,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            });
+    });
+
+    options.AddPolicy("MessageSendEndpoint", httpContext =>
+    {
+        var userKey = httpContext.User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? $"{httpContext.Connection.RemoteIpAddress}";
+        return RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: $"{userKey}-message-send",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 30,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            });
+    });
+});
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new() { Title = "Social App API", Version = "v1" });
@@ -80,6 +123,7 @@ var app = builder.Build();
 app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 
 app.UseSwagger();
 app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Social App API v1"));

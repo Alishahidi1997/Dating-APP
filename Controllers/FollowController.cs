@@ -2,6 +2,7 @@ using System.Security.Claims;
 using API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace API.Controllers;
 
@@ -13,6 +14,7 @@ public class FollowController(IFollowService followService) : ControllerBase
     private int UserId => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
     [HttpPost("{userId:int}")]
+    [EnableRateLimiting("FollowEndpoint")]
     public async Task<ActionResult> Follow(int userId, CancellationToken ct) =>
         await followService.FollowAsync(UserId, userId, ct) switch
         {

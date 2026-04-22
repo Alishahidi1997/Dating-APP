@@ -120,4 +120,92 @@ public class SocialProfileAndFollowIntegrationTests : IClassFixture<ApiWebApplic
         var un = await _client.DeleteAsync($"/api/bookmarks/{idB}");
         Assert.Equal(HttpStatusCode.NoContent, un.StatusCode);
     }
+
+    [Fact]
+    public async Task Search_filters_by_query_and_hobby_ids()
+    {
+        var viewer = UniqueName();
+        var target = UniqueName();
+        var other = UniqueName();
+
+        var regViewer = await _client.PostAsJsonAsync("/api/account/register", new RegisterDto
+        {
+            UserName = viewer,
+            Email = $"{viewer}@test.com",
+            Password = "Aa123456"
+        });
+        var regTarget = await _client.PostAsJsonAsync("/api/account/register", new RegisterDto
+        {
+            UserName = target,
+            Email = $"{target}@test.com",
+            Password = "Aa123456"
+        });
+        var regOther = await _client.PostAsJsonAsync("/api/account/register", new RegisterDto
+        {
+            UserName = other,
+            Email = $"{other}@test.com",
+            Password = "Aa123456"
+        });
+
+        Assert.Equal(HttpStatusCode.OK, regViewer.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, regTarget.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, regOther.StatusCode);
+
+        var viewerToken = await LoginAndGetTokenAsync(_client, viewer, "Aa123456");
+        var targetToken = await LoginAndGetTokenAsync(_client, target, "Aa123456");
+        var otherToken = await LoginAndGetTokenAsync(_client, other, "Aa123456");
+        Assert.False(string.IsNullOrWhiteSpace(viewerToken));
+        Assert.False(string.IsNullOrWhiteSpace(targetToken));
+        Assert.False(string.IsNullOrWhiteSpace(otherToken));
+
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", targetToken);
+        var targetUpdate = await _client.PutAsJsonAsync("/api/users", new MemberUpdateDto
+        {
+            KnownAs = "Pixel Hero",
+            Headline = "Unity gameplay engineer",
+            HobbyIds = [1, 3]
+        });
+        Assert.Equal(HttpStatusCode.NoContent, targetUpdate.StatusCode);
+
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", otherToken);
+        var otherUpdate = await _client.PutAsJsonAsync("/api/users", new MemberUpdateDto
+        {
+            KnownAs = "Backend Coder",
+            Headline = "API architect",
+            HobbyIds = [2]
+        });
+        Assert.Equal(HttpStatusCode.NoContent, otherUpdate.StatusCode);
+
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", viewerToken);
+
+        var searchByKnownAs = await _client.GetAsync("/api/users/search?q=pixel&page=1&pageSize=20");
+        Assert.Equal(HttpStatusCode.OK, searchByKnownAs.StatusCode);
+        using (var doc = JsonDocument.Parse(await searchByKnownAs.Content.ReadAsStringAsync()))
+        {
+            var items = doc.RootElement.GetProperty("items");
+            var names = items.EnumerateArray().Select(x => x.GetProperty("userName").GetString()).ToList();
+            Assert.Contains(target, names);
+            Assert.DoesNotContain(other, names);
+        }
+
+        var searchByHeadline = await _client.GetAsync("/api/users/search?q=unity&page=1&pageSize=20");
+        Assert.Equal(HttpStatusCode.OK, searchByHeadline.StatusCode);
+        using (var doc = JsonDocument.Parse(await searchByHeadline.Content.ReadAsStringAsync()))
+        {
+            var items = doc.RootElement.GetProperty("items");
+            var names = items.EnumerateArray().Select(x => x.GetProperty("userName").GetString()).ToList();
+            Assert.Contains(target, names);
+            Assert.DoesNotContain(other, names);
+        }
+
+        var searchByHobby = await _client.GetAsync("/api/users/search?hobbyIds=1&page=1&pageSize=20");
+        Assert.Equal(HttpStatusCode.OK, searchByHobby.StatusCode);
+        using (var doc = JsonDocument.Parse(await searchByHobby.Content.ReadAsStringAsync()))
+        {
+            var items = doc.RootElement.GetProperty("items");
+            var names = items.EnumerateArray().Select(x => x.GetProperty("userName").GetString()).ToList();
+            Assert.Contains(target, names);
+            Assert.DoesNotContain(other, names);
+        }
+    }
 }

@@ -3,6 +3,7 @@ using API.Models.Dto;
 using API.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace API.Controllers;
 
@@ -11,6 +12,7 @@ namespace API.Controllers;
 public class AccountController(IAccountService accountService) : ControllerBase
 {
     [HttpPost("register")]
+    [EnableRateLimiting("AuthEndpoints")]
     public async Task<ActionResult<object>> Register([FromBody] RegisterDto dto, CancellationToken ct)
     {
         var result = await accountService.RegisterAsync(dto, ct);
@@ -21,6 +23,7 @@ public class AccountController(IAccountService accountService) : ControllerBase
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting("AuthEndpoints")]
     public async Task<ActionResult<object>> Login([FromBody] LoginDto dto, CancellationToken ct)
     {
         var result = await accountService.LoginAsync(dto, ct);
