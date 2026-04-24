@@ -1,8 +1,6 @@
 # Social Networking API
 
-.NET Web API for a social-style app: **JWT auth**, **profiles**, **paged feed**, **follows**, **mutual connections**, **bookmarks**, **direct messages**, **photos**, **hobby interests**, and **subscription tiers**.
-
-
+This is a .NET Web API for a social-style app. It includes JWT auth, profiles, a paged people feed, follows, mutual connections, bookmarks, direct messages, photos, hobby interests, and subscription tiers.
 
 ## Prerequisites
 
@@ -28,9 +26,12 @@ On first run, **`MigrateAsync()`** applies EF migrations (SQLite file from `Conn
 | **Account** | Register / login (JWT). New users get **`emailConfirmed: false`** until they confirm (see below). |
 | **Email confirmation** | Signed token (48h). **`POST /api/account/confirm-email`**, **`POST /api/account/resend-confirmation`** (auth). |
 | **Password reset** | Signed reset token (1h). **`POST /api/account/forgot-password`**, **`POST /api/account/reset-password`**. |
+| **Rate limiting** | Policy-based limiter on auth + high-abuse actions. `429` when a policy is exceeded. |
 | **Profile** | `knownAs`, bio, headline, profile links, city, country, job title, hobbies. **`emailConfirmed`** is returned on user payloads. |
 | **Feed** | **`GET /api/users`** or **`GET /api/users/feed`** — paged; optional **`hobbyIds`** (comma-separated); excludes users you already follow. |
+| **Discovery** | **`GET /api/users/search`** (q + hobby filter) and **`GET /api/users/suggestions`** (shared hobbies + mutuals + city scoring). |
 | **Social graph** | Follow / unfollow, connections (mutual follows), following & followers lists (followers list gated by plan). |
+| **Safety controls** | Block / mute users (`/api/block/{userId}`, `/api/mute/{userId}`) with feed/follow/message filtering. |
 | **Bookmarks** | Save / remove bookmarked profiles. |
 | **Messaging & photos** | 1:1 messages; upload photos and set main. |
 | **Subscriptions** | Free / Plus / Premium (follow caps, followers list visibility, feed boost). |
@@ -85,6 +86,76 @@ dotnet test API.Tests/API.Tests.csproj --filter "FullyQualifiedName~PasswordRese
 
 Set **`Smtp:Host`** (and port, credentials, SSL) plus **`Email:FromAddress`** in `appsettings` or user secrets. Restart the API, register, and use the token from the email the same way as above.
 
+## Discovery: search and suggestions
+
+### User search
+
+Endpoint:
+
+- `GET /api/users/search?q=&hobbyIds=&page=&pageSize=`
+
+Behavior:
+
+- Text match uses EF `Contains` on `userName`, `knownAs`, and `headline`.
+- `hobbyIds` accepts comma-separated values (for example `1,3,5`).
+- Results are paged and returned as `PagedResultDto<UserDto>`.
+- Blocked users are excluded.
+
+Example:
+
+```http
+GET /api/users/search?q=unity&hobbyIds=1,3&page=1&pageSize=20
+Authorization: Bearer <token>
+```
+
+### Suggested accounts
+
+Endpoint:
+
+- `GET /api/users/suggestions?page=&pageSize=`
+
+Current scoring:
+
+- shared hobbies (highest weight)
+- mutual connections
+- same city
+
+Also excluded from suggestions:
+
+- yourself
+- users you already follow
+- blocked users
+- users you muted
+
+Results are sorted by score, then activity.
+
+## Safety controls (block / mute)
+
+### Block
+
+- `POST /api/block/{userId}`
+- `DELETE /api/block/{userId}`
+
+When a block is created, mutual follows are removed and interaction is restricted in feed, follow actions, profile lookup, and messaging.
+
+### Mute
+
+- `POST /api/mute/{userId}`
+- `DELETE /api/mute/{userId}`
+
+Mute is a soft filter for your experience (for example discovery/feed visibility).
+
+## Rate limiting
+
+The API uses ASP.NET rate limiter policies on the highest-risk actions:
+
+- `POST /api/account/register`
+- `POST /api/account/login`
+- `POST /api/follow/{userId}`
+- `POST /api/messages`
+
+When a limit is exceeded, the endpoint returns `429 Too Many Requests`.
+
 ## Subscriptions
 
 Built-in plans:
@@ -118,11 +189,15 @@ Endpoints:
 
 - `POST /api/account/resend-confirmation`
 - `GET /api/users`, `GET /api/users/feed` — query: `pageNumber`, `pageSize`, `hobbyIds`, `orderBy`
+- `GET /api/users/search` — query: `q`, `hobbyIds`, `page`, `pageSize`
+- `GET /api/users/suggestions` — query: `page`, `pageSize`
 - `GET /api/users/{username}`, `PUT /api/users`
 - `GET /api/users/hobbies`, `GET /api/users/interests`
 - `GET /api/users/connections`
 - `GET /api/users/following?list=following` or `list=followers`
 - `POST` / `DELETE /api/follow/{userId}`
+- `POST` / `DELETE /api/block/{userId}`
+- `POST` / `DELETE /api/mute/{userId}`
 - `POST` / `DELETE /api/bookmarks/{userId}`
 - `POST /api/messages`, `GET /api/messages`, `GET /api/messages/thread/{recipientId}`, etc.
 - `POST /api/photos`, `PUT /api/photos/{id}/set-main`, `DELETE /api/photos/{id}`
@@ -159,6 +234,12 @@ Run only email verification tests:
 
 ```bash
 dotnet test API.Tests/API.Tests.csproj --filter "FullyQualifiedName~EmailVerificationIntegrationTests"
+```
+
+Run only discovery tests:
+
+```bash
+dotnet test API.Tests/API.Tests.csproj --filter "FullyQualifiedName~SocialProfileAndFollowIntegrationTests"
 ```
 
 On Windows, **stop a running `API.exe`** if the build fails because **`API.dll`** is locked.
