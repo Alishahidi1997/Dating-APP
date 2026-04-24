@@ -10,6 +10,7 @@ public interface IUserService
     Task<bool> UpdateMemberAsync(int userId, MemberUpdateDto dto, CancellationToken ct = default);
     Task<PagedResultDto<UserDto>> GetFeedAsync(int userId, UserParams userParams, CancellationToken ct = default);
     Task<PagedResultDto<UserDto>> SearchUsersAsync(int userId, string? q, UserParams userParams, CancellationToken ct = default);
+    Task<PagedResultDto<UserDto>> GetSuggestionsAsync(int userId, int page, int pageSize, CancellationToken ct = default);
     Task<IEnumerable<UserDto>> GetAllUsersAsync(CancellationToken ct = default);
     Task<IReadOnlyList<HobbyDto>> GetHobbyOptionsAsync(CancellationToken ct = default);
     Task<IEnumerable<FollowListMemberDto>> GetFollowListAsync(int userId, string list, CancellationToken ct = default);

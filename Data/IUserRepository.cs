@@ -16,6 +16,7 @@ public interface IUserRepository
     Task<AppUser?> GetUserByUsernameWithPhotosAsync(string username, CancellationToken ct = default);
     Task<PagedResultDto<AppUser>> GetUsersForFeedAsync(int userId, UserParams userParams, CancellationToken ct = default);
     Task<PagedResultDto<AppUser>> SearchUsersAsync(int userId, string? q, UserParams userParams, CancellationToken ct = default);
+    Task<PagedResultDto<AppUser>> GetSuggestionsAsync(int userId, int page, int pageSize, CancellationToken ct = default);
     Task<IReadOnlyList<FollowRelationResult>> GetFollowRelationsAsync(int userId, string list, CancellationToken ct = default);
     Task<IEnumerable<AppUser>> GetConnectionsAsync(int userId, CancellationToken ct = default);
     Task<IReadOnlyList<Hobby>> GetAllHobbiesAsync(CancellationToken ct = default);

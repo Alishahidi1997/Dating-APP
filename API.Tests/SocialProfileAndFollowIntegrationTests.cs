@@ -208,4 +208,99 @@ public class SocialProfileAndFollowIntegrationTests : IClassFixture<ApiWebApplic
             Assert.DoesNotContain(other, names);
         }
     }
+
+    [Fact]
+    public async Task Suggestions_scores_by_shared_hobbies_mutual_connections_and_city()
+    {
+        var viewer = UniqueName();
+        var common = UniqueName();
+        var top = UniqueName();
+        var low = UniqueName();
+
+        var regViewer = await _client.PostAsJsonAsync("/api/account/register", new RegisterDto
+        {
+            UserName = viewer,
+            Email = $"{viewer}@test.com",
+            Password = "Aa123456"
+        });
+        var regCommon = await _client.PostAsJsonAsync("/api/account/register", new RegisterDto
+        {
+            UserName = common,
+            Email = $"{common}@test.com",
+            Password = "Aa123456"
+        });
+        var regTop = await _client.PostAsJsonAsync("/api/account/register", new RegisterDto
+        {
+            UserName = top,
+            Email = $"{top}@test.com",
+            Password = "Aa123456"
+        });
+        var regLow = await _client.PostAsJsonAsync("/api/account/register", new RegisterDto
+        {
+            UserName = low,
+            Email = $"{low}@test.com",
+            Password = "Aa123456"
+        });
+
+        Assert.Equal(HttpStatusCode.OK, regViewer.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, regCommon.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, regTop.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, regLow.StatusCode);
+
+        using var docCommon = JsonDocument.Parse(await regCommon.Content.ReadAsStringAsync());
+        using var docTop = JsonDocument.Parse(await regTop.Content.ReadAsStringAsync());
+        using var docLow = JsonDocument.Parse(await regLow.Content.ReadAsStringAsync());
+        var commonId = docCommon.RootElement.GetProperty("user").GetProperty("id").GetInt32();
+        var topId = docTop.RootElement.GetProperty("user").GetProperty("id").GetInt32();
+        var lowId = docLow.RootElement.GetProperty("user").GetProperty("id").GetInt32();
+
+        var viewerToken = await LoginAndGetTokenAsync(_client, viewer, "Aa123456");
+        var commonToken = await LoginAndGetTokenAsync(_client, common, "Aa123456");
+        var topToken = await LoginAndGetTokenAsync(_client, top, "Aa123456");
+        var lowToken = await LoginAndGetTokenAsync(_client, low, "Aa123456");
+        Assert.False(string.IsNullOrWhiteSpace(viewerToken));
+        Assert.False(string.IsNullOrWhiteSpace(commonToken));
+        Assert.False(string.IsNullOrWhiteSpace(topToken));
+        Assert.False(string.IsNullOrWhiteSpace(lowToken));
+
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", viewerToken);
+        var viewerUpdate = await _client.PutAsJsonAsync("/api/users", new MemberUpdateDto
+        {
+            City = "Victoria",
+            HobbyIds = [1, 2]
+        });
+        Assert.Equal(HttpStatusCode.NoContent, viewerUpdate.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await _client.PostAsync($"/api/follow/{commonId}", null)).StatusCode);
+
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", topToken);
+        var topUpdate = await _client.PutAsJsonAsync("/api/users", new MemberUpdateDto
+        {
+            City = "Victoria",
+            HobbyIds = [1]
+        });
+        Assert.Equal(HttpStatusCode.NoContent, topUpdate.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await _client.PostAsync($"/api/follow/{commonId}", null)).StatusCode);
+
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", lowToken);
+        var lowUpdate = await _client.PutAsJsonAsync("/api/users", new MemberUpdateDto
+        {
+            City = "Calgary",
+            HobbyIds = [2]
+        });
+        Assert.Equal(HttpStatusCode.NoContent, lowUpdate.StatusCode);
+
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", viewerToken);
+        var suggestions = await _client.GetAsync("/api/users/suggestions?page=1&pageSize=10");
+        Assert.Equal(HttpStatusCode.OK, suggestions.StatusCode);
+
+        using var suggestionsDoc = JsonDocument.Parse(await suggestions.Content.ReadAsStringAsync());
+        var items = suggestionsDoc.RootElement.GetProperty("items").EnumerateArray().ToList();
+        Assert.True(items.Count >= 2);
+        var names = items.Select(x => x.GetProperty("userName").GetString()).ToList();
+        var topIndex = names.IndexOf(top);
+        var lowIndex = names.IndexOf(low);
+        Assert.True(topIndex >= 0);
+        Assert.True(lowIndex >= 0);
+        Assert.True(topIndex < lowIndex, "Expected top candidate to rank ahead of low candidate.");
+    }
 }

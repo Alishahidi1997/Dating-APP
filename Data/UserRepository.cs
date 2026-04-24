@@ -119,6 +119,75 @@ public class UserRepository(AppDbContext context) : IUserRepository
         return new PagedResultDto<AppUser>(items, totalCount, userParams.PageNumber, userParams.PageSize);
     }
 
+    public async Task<PagedResultDto<AppUser>> GetSuggestionsAsync(int userId, int page, int pageSize, CancellationToken ct = default)
+    {
+        var normalizedPage = Math.Max(1, page);
+        var normalizedPageSize = Math.Min(50, Math.Max(1, pageSize));
+
+        var viewer = await context.Users
+            .Include(u => u.UserHobbies)
+            .FirstOrDefaultAsync(u => u.Id == userId, ct);
+        if (viewer == null)
+            return new PagedResultDto<AppUser>([], 0, normalizedPage, normalizedPageSize);
+
+        var followingIds = await context.UserFollows
+            .Where(f => f.FollowerId == userId)
+            .Select(f => f.FollowingId)
+            .ToListAsync(ct);
+        var followingSet = followingIds.ToHashSet();
+        var viewerHobbyIds = viewer.UserHobbies.Select(h => h.HobbyId).ToHashSet();
+
+        var candidates = await context.Users
+            .Include(u => u.SubscriptionPlan)
+            .Include(u => u.Photos)
+            .Include(u => u.UserHobbies).ThenInclude(uh => uh.Hobby)
+            .Where(u => u.Id != userId && !followingSet.Contains(u.Id))
+            .Where(u => !context.UserBlocks.Any(b =>
+                (b.BlockerId == userId && b.BlockedId == u.Id) ||
+                (b.BlockerId == u.Id && b.BlockedId == userId)))
+            .Where(u => !context.UserMutes.Any(m => m.MuterId == userId && m.MutedId == u.Id))
+            .ToListAsync(ct);
+
+        var candidateIds = candidates.Select(c => c.Id).ToList();
+        var candidateFollowingRows = await context.UserFollows
+            .Where(f => candidateIds.Contains(f.FollowerId))
+            .Select(f => new { f.FollowerId, f.FollowingId })
+            .ToListAsync(ct);
+        var candidateFollowingMap = candidateFollowingRows
+            .GroupBy(x => x.FollowerId)
+            .ToDictionary(g => g.Key, g => g.Select(x => x.FollowingId).ToHashSet());
+
+        var scored = candidates
+            .Select(candidate =>
+            {
+                var sharedHobbies = candidate.UserHobbies.Count(uh => viewerHobbyIds.Contains(uh.HobbyId));
+                candidateFollowingMap.TryGetValue(candidate.Id, out var candidateFollowingSet);
+                var mutualConnections = candidateFollowingSet == null
+                    ? 0
+                    : candidateFollowingSet.Count(id => followingSet.Contains(id));
+                var sameCity = !string.IsNullOrWhiteSpace(viewer.City)
+                    && !string.IsNullOrWhiteSpace(candidate.City)
+                    && string.Equals(viewer.City, candidate.City, StringComparison.OrdinalIgnoreCase);
+
+                var score = sharedHobbies * 3 + mutualConnections * 2 + (sameCity ? 1 : 0);
+                return new { Candidate = candidate, Score = score };
+            })
+            .Where(x => x.Score > 0)
+            .OrderByDescending(x => x.Score)
+            .ThenByDescending(x => x.Candidate.LastActive)
+            .ThenBy(x => x.Candidate.UserName)
+            .ToList();
+
+        var totalCount = scored.Count;
+        var items = scored
+            .Skip((normalizedPage - 1) * normalizedPageSize)
+            .Take(normalizedPageSize)
+            .Select(x => x.Candidate)
+            .ToList();
+
+        return new PagedResultDto<AppUser>(items, totalCount, normalizedPage, normalizedPageSize);
+    }
+
     private static List<int> ParseHobbyIds(string? raw)
     {
         if (string.IsNullOrWhiteSpace(raw)) return [];

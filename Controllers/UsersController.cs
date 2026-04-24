@@ -39,6 +39,13 @@ public class UsersController(IUserService userService, ISubscriptionService subs
         return Ok(await userService.SearchUsersAsync(UserId, q, userParams, ct));
     }
 
+    [HttpGet("suggestions")]
+    public async Task<ActionResult<PagedResultDto<UserDto>>> GetSuggestions(
+        [FromQuery(Name = "page")] int page = 1,
+        [FromQuery] int pageSize = 10,
+        CancellationToken ct = default) =>
+        Ok(await userService.GetSuggestionsAsync(UserId, Math.Max(1, page), pageSize, ct));
+
     [HttpGet("hobbies")]
     public async Task<ActionResult<IReadOnlyList<HobbyDto>>> GetHobbies(CancellationToken ct) =>
         Ok(await userService.GetHobbyOptionsAsync(ct));
