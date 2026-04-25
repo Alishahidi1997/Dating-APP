@@ -188,6 +188,64 @@ public class UserRepository(AppDbContext context) : IUserRepository
         return new PagedResultDto<AppUser>(items, totalCount, normalizedPage, normalizedPageSize);
     }
 
+    public async Task<IReadOnlyList<TagSummaryDto>> GetHobbyTagsAsync(int limit, CancellationToken ct = default)
+    {
+        var normalizedLimit = Math.Min(100, Math.Max(1, limit));
+        var rows = await context.Hobbies
+            .Select(h => new
+            {
+                h.Name,
+                UserCount = h.UserHobbies.Count
+            })
+            .Where(x => x.UserCount > 0)
+            .OrderByDescending(x => x.UserCount)
+            .ThenBy(x => x.Name)
+            .Take(normalizedLimit)
+            .ToListAsync(ct);
+
+        return rows
+            .Select(x => new TagSummaryDto
+            {
+                Tag = $"#{x.Name.ToLowerInvariant()}",
+                UserCount = x.UserCount
+            })
+            .ToList();
+    }
+
+    public async Task<PagedResultDto<AppUser>> GetUsersByTagAsync(int viewerUserId, string tag, int page, int pageSize, CancellationToken ct = default)
+    {
+        var normalizedPage = Math.Max(1, page);
+        var normalizedPageSize = Math.Min(50, Math.Max(1, pageSize));
+        var normalizedTag = NormalizeTag(tag);
+        if (string.IsNullOrWhiteSpace(normalizedTag))
+            return new PagedResultDto<AppUser>([], 0, normalizedPage, normalizedPageSize);
+
+        var hobby = await context.Hobbies.FirstOrDefaultAsync(h => h.Name.ToLower() == normalizedTag, ct);
+        if (hobby == null)
+            return new PagedResultDto<AppUser>([], 0, normalizedPage, normalizedPageSize);
+
+        var query = context.Users
+            .Include(u => u.SubscriptionPlan)
+            .Include(u => u.Photos)
+            .Include(u => u.UserHobbies).ThenInclude(uh => uh.Hobby)
+            .Where(u => u.Id != viewerUserId)
+            .Where(u => u.UserHobbies.Any(uh => uh.HobbyId == hobby.Id))
+            .Where(u => !context.UserBlocks.Any(b =>
+                (b.BlockerId == viewerUserId && b.BlockedId == u.Id) ||
+                (b.BlockerId == u.Id && b.BlockedId == viewerUserId)))
+            .Where(u => !context.UserMutes.Any(m => m.MuterId == viewerUserId && m.MutedId == u.Id))
+            .OrderByDescending(u => u.LastActive)
+            .ThenBy(u => u.UserName);
+
+        var totalCount = await query.CountAsync(ct);
+        var items = await query
+            .Skip((normalizedPage - 1) * normalizedPageSize)
+            .Take(normalizedPageSize)
+            .ToListAsync(ct);
+
+        return new PagedResultDto<AppUser>(items, totalCount, normalizedPage, normalizedPageSize);
+    }
+
     private static List<int> ParseHobbyIds(string? raw)
     {
         if (string.IsNullOrWhiteSpace(raw)) return [];
@@ -199,6 +257,12 @@ public class UserRepository(AppDbContext context) : IUserRepository
                 list.Add(id);
         }
         return list.Distinct().ToList();
+    }
+
+    private static string NormalizeTag(string tag)
+    {
+        var raw = (tag ?? "").Trim().ToLowerInvariant();
+        return raw.StartsWith('#') ? raw[1..] : raw;
     }
 
     public async Task<IReadOnlyList<FollowRelationResult>> GetFollowRelationsAsync(int userId, string list, CancellationToken ct = default)

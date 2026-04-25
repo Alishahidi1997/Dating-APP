@@ -69,6 +69,16 @@ public class UserService(IUserRepository userRepo, IUserModerationRepository mod
         return new PagedResultDto<UserDto>(dtos, result.TotalCount, result.PageNumber, result.PageSize);
     }
 
+    public Task<IReadOnlyList<TagSummaryDto>> GetTagsAsync(int limit, CancellationToken ct = default) =>
+        userRepo.GetHobbyTagsAsync(limit, ct);
+
+    public async Task<PagedResultDto<UserDto>> GetUsersByTagAsync(int viewerUserId, string tag, int page, int pageSize, CancellationToken ct = default)
+    {
+        var result = await userRepo.GetUsersByTagAsync(viewerUserId, tag, page, pageSize, ct);
+        var dtos = result.Items.Select(MapToUserDto).ToList();
+        return new PagedResultDto<UserDto>(dtos, result.TotalCount, result.PageNumber, result.PageSize);
+    }
+
     public async Task<IEnumerable<UserDto>> GetAllUsersAsync(CancellationToken ct = default)
     {
         var users = await userRepo.GetUsersAsync(ct);
