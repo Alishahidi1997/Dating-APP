@@ -10,6 +10,7 @@ public class PostDto
     public string? AuthorKnownAs { get; set; }
     public string? AuthorPhotoUrl { get; set; }
     public string Body { get; set; } = string.Empty;
+    public List<string> MediaUrls { get; set; } = [];
     public DateTime CreatedUtc { get; set; }
     public DateTime? UpdatedUtc { get; set; }
     public PostVisibility Visibility { get; set; }

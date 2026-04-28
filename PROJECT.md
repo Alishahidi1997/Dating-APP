@@ -12,7 +12,7 @@ This document turns the social API from a **people graph + DMs + media** foundat
 |--------|------|-------|--------|
 | **Email verification** | Reduce fake accounts | **Done:** `EmailConfirmed` on user, HMAC-signed token (48h), `POST /api/account/confirm-email`, `POST /api/account/resend-confirmation` (auth). Logging sender when `Smtp:Host` empty; MailKit when configured. | Optional: `EmailConfirmation:SigningKey`, `App:PublicApiBaseUrl` |
 | **Password reset** | Standard account recovery | **Done:** `POST /api/account/forgot-password` + `POST /api/account/reset-password`, HMAC-signed reset token (1h), non-enumerating forgot flow | Same mail infra as above; optional `PasswordReset:SigningKey` |
-| **Rate limiting** | Abuse resistance | ASP.NET rate limiter on register, login, follow, message | Middleware / policies |
+| **Rate limiting** | Abuse resistance | **Done:** ASP.NET rate limiter policies on `POST /api/account/register`, `POST /api/account/login`, `POST /api/follow/{userId}`, `POST /api/messages` with `429` rejection | Middleware policies: `AuthEndpoints`, `FollowEndpoint`, `MessageSendEndpoint` |
 | **Block & mute** | Safety + feed quality | **Done:** `UserBlock` + `UserMute` tables; `POST/DELETE /api/block/{userId}`, `POST/DELETE /api/mute/{userId}`; block removes mutual follows + mutes between users; feed excludes block (either way) + mute (you muted them); follow/DM/thread/inbox/outbox filtered on block; profile `GET /api/users/{username}` returns 404 when blocked pair | Migration `AddUserBlockAndUserMute` |
 
 **Exit criteria:** New users can verify email; resets work; obvious spam paths throttled; blocked users cannot interact.
@@ -24,8 +24,8 @@ This document turns the social API from a **people graph + DMs + media** foundat
 | Feature | Goal | Scope | Notes |
 |--------|------|-------|--------|
 | **User search** | Find people | `GET /api/users/search?q=&hobbyIds=&page=` | Full-text optional later; start with `LIKE` / EF `Contains` on username, knownAs, headline |
-| **Suggested accounts** | Onboarding + growth | `GET /api/users/suggestions` — score by shared hobbies, mutual connections, same city | Read-only; cache scores if slow |
-| **Hashtags (optional)** | Topic discovery | `Tag` + `PostTag` if you add posts first; or tag hobbies only | Can defer until Phase 2 |
+| **Suggested accounts** | Onboarding + growth | **Done:** `GET /api/users/suggestions?page=&pageSize=` with weighted scoring by shared hobbies, mutual connections, and same city; excludes self, already-followed, blocked, and muted users | Read-only; cache scores if slow |
+| **Hashtags (optional)** | Topic discovery | **Done (hobby tags):** `GET /api/tags?limit=` and `GET /api/tags/{tag}/users?page=&pageSize=` using hobby catalog as hashtags (e.g. `#travel`) | Can still introduce `Tag` + `PostTag` with posts later |
 
 **Exit criteria:** Client can search and show a “who to follow” list without scanning the whole directory.
 
@@ -35,11 +35,11 @@ This document turns the social API from a **people graph + DMs + media** foundat
 
 | Feature | Goal | Scope | Notes |
 |--------|------|-------|--------|
-| **Post entity** | Shareable content | `Post`: `AuthorId`, `Body` (markdown/plain), `CreatedUtc`, `Visibility` (public / followers), soft delete | Migration + `PostsController` |
-| **Home timeline** | Feed from follows | `GET /api/feed/home?page=` — posts from followed users, reverse chronological | Join `UserFollows`; pagination |
-| **User timeline** | Profile tab “Posts” | `GET /api/users/{username}/posts` | Public or followers-only per visibility |
-| **Delete / edit post** | Basic moderation | `PUT` / `DELETE` own posts | Soft delete for audit |
-| **Media on posts** | Rich posts | Reuse `Photo` or new `PostMedia` linking to blob/storage | Larger scope if moving off local disk |
+| **Post entity** | Shareable content | **Done:** `Post` with `AuthorId`, `Body`, `CreatedUtc`, `UpdatedUtc`, `Visibility` (public/followers), and soft delete (`DeletedUtc`) | Migration `AddPostsTimeline`; endpoints under `PostsController` |
+| **Home timeline** | Feed from follows | **Done:** `GET /api/feed/home?page=&pageSize=` returns followed users' non-deleted posts in reverse chronological order with block filtering | Followers-only visibility respected |
+| **User timeline** | Profile tab “Posts” | **Done:** `GET /api/users/{username}/posts?page=&pageSize=` | Public posts for everyone, followers-only posts for followers/owner |
+| **Delete / edit post** | Basic moderation | **Done:** `PUT /api/posts/{postId}` and `DELETE /api/posts/{postId}` for author only | Soft delete for audit |
+| **Media on posts** | Rich posts | **Done:** Reused `Photo` with `PostPhoto` join (`photoIds` on create/update, `mediaUrls` on read) so post media can be composed from user-owned uploaded photos | `POST/PUT /api/posts` enforce photo ownership |
 
 **Exit criteria:** A user sees a chronological stream from people they follow, not only the “people discovery” feed.
 

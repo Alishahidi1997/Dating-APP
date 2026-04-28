@@ -50,6 +50,21 @@ public class SocialProfileAndFollowIntegrationTests : IClassFixture<ApiWebApplic
         return (reg.StatusCode, userId);
     }
 
+    private static async Task<PhotoDto?> UploadPhotoAsync(HttpClient client, string fileName = "post-photo.png")
+    {
+        var form = new MultipartFormDataContent();
+        var bytes = new byte[] { 1, 2, 3, 4, 5 };
+        var fileContent = new ByteArrayContent(bytes);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue("image/png");
+        form.Add(fileContent, "file", fileName);
+
+        var response = await client.PostAsync("/api/photos", form);
+        if (response.StatusCode != HttpStatusCode.Created)
+            return null;
+
+        return await response.Content.ReadFromJsonAsync<PhotoDto>();
+    }
+
     [Fact]
     public async Task Profile_update_exposes_headline_and_links_on_get_user()
     {
@@ -538,5 +553,49 @@ public class SocialProfileAndFollowIntegrationTests : IClassFixture<ApiWebApplic
             Assert.Contains("public post", bodies);
             Assert.DoesNotContain("followers only post", bodies);
         }
+    }
+
+    [Fact]
+    public async Task Posts_allow_media_for_owned_photos_and_reject_foreign_photo_ids()
+    {
+        var author = UniqueName();
+        var other = UniqueName();
+
+        var (authorStatus, _) = await RegisterAndGetIdAsync(_client, author);
+        var (otherStatus, _) = await RegisterAndGetIdAsync(_client, other);
+        Assert.Equal(HttpStatusCode.OK, authorStatus);
+        Assert.Equal(HttpStatusCode.OK, otherStatus);
+
+        var authorToken = await LoginAndGetTokenAsync(_client, author, "Aa123456");
+        var otherToken = await LoginAndGetTokenAsync(_client, other, "Aa123456");
+        Assert.False(string.IsNullOrWhiteSpace(authorToken));
+        Assert.False(string.IsNullOrWhiteSpace(otherToken));
+
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", otherToken);
+        var otherPhoto = await UploadPhotoAsync(_client);
+        Assert.NotNull(otherPhoto);
+
+        _client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", authorToken);
+        var authorPhoto = await UploadPhotoAsync(_client);
+        Assert.NotNull(authorPhoto);
+
+        var createWithOwnedPhoto = await _client.PostAsJsonAsync("/api/posts", new CreatePostDto
+        {
+            Body = "post with media",
+            Visibility = PostVisibility.Public,
+            PhotoIds = [authorPhoto!.Id]
+        });
+        Assert.Equal(HttpStatusCode.OK, createWithOwnedPhoto.StatusCode);
+        var created = await createWithOwnedPhoto.Content.ReadFromJsonAsync<PostDto>();
+        Assert.NotNull(created);
+        Assert.Contains(authorPhoto.Url, created.MediaUrls);
+
+        var createWithForeignPhoto = await _client.PostAsJsonAsync("/api/posts", new CreatePostDto
+        {
+            Body = "invalid media ownership",
+            Visibility = PostVisibility.Public,
+            PhotoIds = [otherPhoto!.Id]
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, createWithForeignPhoto.StatusCode);
     }
 }

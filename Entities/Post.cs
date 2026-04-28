@@ -21,4 +21,5 @@ public class Post
     public DateTime? UpdatedUtc { get; set; }
     public DateTime? DeletedUtc { get; set; }
     public PostVisibility Visibility { get; set; } = PostVisibility.Public;
+    public ICollection<PostPhoto> PostPhotos { get; set; } = [];
 }

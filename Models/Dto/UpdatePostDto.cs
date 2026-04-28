@@ -10,4 +10,5 @@ public class UpdatePostDto
     public string Body { get; set; } = string.Empty;
 
     public PostVisibility Visibility { get; set; } = PostVisibility.Public;
+    public List<int>? PhotoIds { get; set; }
 }

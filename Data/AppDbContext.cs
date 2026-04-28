@@ -16,6 +16,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<UserBlock> UserBlocks { get; set; } = null!;
     public DbSet<UserMute> UserMutes { get; set; } = null!;
     public DbSet<Post> Posts { get; set; } = null!;
+    public DbSet<PostPhoto> PostPhotos { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -29,6 +30,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         ConfigureUserBlocks(builder);
         ConfigureUserMutes(builder);
         ConfigurePosts(builder);
+        ConfigurePostPhotos(builder);
         ConfigureUserIndexes(builder);
 
         builder.Entity<Hobby>().HasData(
@@ -220,5 +222,23 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
         builder.Entity<Post>()
             .HasIndex(p => p.AuthorId);
+    }
+
+    private static void ConfigurePostPhotos(ModelBuilder builder)
+    {
+        builder.Entity<PostPhoto>()
+            .HasKey(pp => new { pp.PostId, pp.PhotoId });
+
+        builder.Entity<PostPhoto>()
+            .HasOne(pp => pp.Post)
+            .WithMany(p => p.PostPhotos)
+            .HasForeignKey(pp => pp.PostId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<PostPhoto>()
+            .HasOne(pp => pp.Photo)
+            .WithMany(p => p.PostPhotos)
+            .HasForeignKey(pp => pp.PhotoId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

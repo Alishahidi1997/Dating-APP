@@ -22,6 +22,24 @@ public class PostService(IPostRepository postRepo, IUserRepository userRepo) : I
             Visibility = dto.Visibility
         };
 
+        var requestedPhotoIds = (dto.PhotoIds ?? [])
+            .Distinct()
+            .ToList();
+        if (requestedPhotoIds.Count > 4)
+            return null;
+
+        var ownedPhotoIds = await postRepo.GetOwnedPhotoIdsAsync(authorId, requestedPhotoIds, ct);
+        if (ownedPhotoIds.Count != requestedPhotoIds.Count)
+            return null;
+
+        post.PostPhotos = requestedPhotoIds
+            .Select((photoId, index) => new PostPhoto
+            {
+                PhotoId = photoId,
+                SortOrder = index
+            })
+            .ToList();
+
         postRepo.Add(post);
         if (!await userRepo.SaveAllAsync(ct))
             return null;
@@ -39,6 +57,26 @@ public class PostService(IPostRepository postRepo, IUserRepository userRepo) : I
         post.Body = dto.Body.Trim();
         post.Visibility = dto.Visibility;
         post.UpdatedUtc = DateTime.UtcNow;
+
+        var requestedPhotoIds = (dto.PhotoIds ?? [])
+            .Distinct()
+            .ToList();
+        if (requestedPhotoIds.Count > 4)
+            return null;
+
+        var ownedPhotoIds = await postRepo.GetOwnedPhotoIdsAsync(currentUserId, requestedPhotoIds, ct);
+        if (ownedPhotoIds.Count != requestedPhotoIds.Count)
+            return null;
+
+        post.PostPhotos.Clear();
+        post.PostPhotos = requestedPhotoIds
+            .Select((photoId, index) => new PostPhoto
+            {
+                PostId = post.Id,
+                PhotoId = photoId,
+                SortOrder = index
+            })
+            .ToList();
 
         if (!await userRepo.SaveAllAsync(ct))
             return null;
@@ -79,6 +117,10 @@ public class PostService(IPostRepository postRepo, IUserRepository userRepo) : I
         AuthorKnownAs = post.Author.KnownAs,
         AuthorPhotoUrl = post.Author.Photos.FirstOrDefault(p => p.IsMain)?.Url,
         Body = post.Body,
+        MediaUrls = post.PostPhotos
+            .OrderBy(pp => pp.SortOrder)
+            .Select(pp => pp.Photo.Url)
+            .ToList(),
         CreatedUtc = post.CreatedUtc,
         UpdatedUtc = post.UpdatedUtc,
         Visibility = post.Visibility
