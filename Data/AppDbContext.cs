@@ -17,6 +17,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<UserMute> UserMutes { get; set; } = null!;
     public DbSet<Post> Posts { get; set; } = null!;
     public DbSet<PostPhoto> PostPhotos { get; set; } = null!;
+    public DbSet<PostReaction> PostReactions { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -31,6 +32,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         ConfigureUserMutes(builder);
         ConfigurePosts(builder);
         ConfigurePostPhotos(builder);
+        ConfigurePostReactions(builder);
         ConfigureUserIndexes(builder);
 
         builder.Entity<Hobby>().HasData(
@@ -240,5 +242,28 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             .WithMany(p => p.PostPhotos)
             .HasForeignKey(pp => pp.PhotoId)
             .OnDelete(DeleteBehavior.Cascade);
+    }
+
+    private static void ConfigurePostReactions(ModelBuilder builder)
+    {
+        builder.Entity<PostReaction>()
+            .HasKey(r => new { r.PostId, r.UserId });
+
+        builder.Entity<PostReaction>()
+            .HasOne(r => r.Post)
+            .WithMany(p => p.Reactions)
+            .HasForeignKey(r => r.PostId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<PostReaction>()
+            .HasOne(r => r.User)
+            .WithMany(u => u.PostReactions)
+            .HasForeignKey(r => r.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Entity<PostReaction>()
+            .Property(r => r.Kind)
+            .HasConversion<string>()
+            .HasMaxLength(24);
     }
 }

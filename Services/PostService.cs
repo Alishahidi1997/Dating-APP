@@ -45,7 +45,7 @@ public class PostService(IPostRepository postRepo, IUserRepository userRepo) : I
             return null;
 
         var created = await postRepo.GetByIdAsync(post.Id, ct);
-        return created == null ? null : MapToDto(created);
+        return created == null ? null : MapToDto(created, authorId);
     }
 
     public async Task<PostDto?> UpdateAsync(int currentUserId, int postId, UpdatePostDto dto, CancellationToken ct = default)
@@ -82,7 +82,7 @@ public class PostService(IPostRepository postRepo, IUserRepository userRepo) : I
             return null;
 
         var updated = await postRepo.GetByIdAsync(post.Id, ct);
-        return updated == null ? null : MapToDto(updated);
+        return updated == null ? null : MapToDto(updated, currentUserId);
     }
 
     public async Task<bool> DeleteAsync(int currentUserId, int postId, CancellationToken ct = default)
@@ -95,21 +95,59 @@ public class PostService(IPostRepository postRepo, IUserRepository userRepo) : I
         return await userRepo.SaveAllAsync(ct);
     }
 
+    public async Task<bool> AddOrUpdateReactionAsync(int currentUserId, int postId, PostReactionKind kind, CancellationToken ct = default)
+    {
+        var post = await postRepo.GetVisiblePostForViewerAsync(postId, currentUserId, ct);
+        if (post == null)
+            return false;
+
+        var existing = await postRepo.GetReactionAsync(postId, currentUserId, ct);
+        if (existing == null)
+        {
+            postRepo.AddReaction(new PostReaction
+            {
+                PostId = postId,
+                UserId = currentUserId,
+                Kind = kind
+            });
+        }
+        else
+        {
+            existing.Kind = kind;
+        }
+
+        return await userRepo.SaveAllAsync(ct);
+    }
+
+    public async Task<bool> RemoveReactionAsync(int currentUserId, int postId, CancellationToken ct = default)
+    {
+        var post = await postRepo.GetVisiblePostForViewerAsync(postId, currentUserId, ct);
+        if (post == null)
+            return false;
+
+        var existing = await postRepo.GetReactionAsync(postId, currentUserId, ct);
+        if (existing == null)
+            return false;
+
+        postRepo.RemoveReaction(existing);
+        return await userRepo.SaveAllAsync(ct);
+    }
+
     public async Task<PagedResultDto<PostDto>> GetHomeTimelineAsync(int viewerUserId, int page, int pageSize, CancellationToken ct = default)
     {
         var result = await postRepo.GetHomeTimelineAsync(viewerUserId, page, pageSize, ct);
-        var items = result.Items.Select(MapToDto).ToList();
+        var items = result.Items.Select(p => MapToDto(p, viewerUserId)).ToList();
         return new PagedResultDto<PostDto>(items, result.TotalCount, result.PageNumber, result.PageSize);
     }
 
     public async Task<PagedResultDto<PostDto>> GetUserTimelineAsync(int viewerUserId, string username, int page, int pageSize, CancellationToken ct = default)
     {
         var result = await postRepo.GetUserTimelineAsync(viewerUserId, username, page, pageSize, ct);
-        var items = result.Items.Select(MapToDto).ToList();
+        var items = result.Items.Select(p => MapToDto(p, viewerUserId)).ToList();
         return new PagedResultDto<PostDto>(items, result.TotalCount, result.PageNumber, result.PageSize);
     }
 
-    private static PostDto MapToDto(Post post) => new()
+    private static PostDto MapToDto(Post post, int viewerUserId) => new()
     {
         Id = post.Id,
         AuthorId = post.AuthorId,
@@ -121,6 +159,18 @@ public class PostService(IPostRepository postRepo, IUserRepository userRepo) : I
             .OrderBy(pp => pp.SortOrder)
             .Select(pp => pp.Photo.Url)
             .ToList(),
+        Reactions = post.Reactions
+            .GroupBy(r => r.Kind)
+            .Select(g => new PostReactionSummaryDto
+            {
+                Kind = g.Key,
+                Count = g.Count()
+            })
+            .OrderBy(r => r.Kind)
+            .ToList(),
+        MyReaction = post.Reactions
+            .FirstOrDefault(r => r.UserId == viewerUserId)
+            ?.Kind,
         CreatedUtc = post.CreatedUtc,
         UpdatedUtc = post.UpdatedUtc,
         Visibility = post.Visibility

@@ -41,4 +41,22 @@ public class PostsController(IPostService postService) : ControllerBase
 
         return NoContent();
     }
+
+    [HttpPost("{postId:int}/reactions")]
+    public async Task<ActionResult> ReactToPost(int postId, [FromBody] ReactToPostDto dto, CancellationToken ct)
+    {
+        if (!await postService.AddOrUpdateReactionAsync(UserId, postId, dto.Kind, ct))
+            return BadRequest("Could not react to post.");
+
+        return NoContent();
+    }
+
+    [HttpDelete("{postId:int}/reactions")]
+    public async Task<ActionResult> RemoveReaction(int postId, CancellationToken ct)
+    {
+        if (!await postService.RemoveReactionAsync(UserId, postId, ct))
+            return BadRequest("Could not remove reaction.");
+
+        return NoContent();
+    }
 }

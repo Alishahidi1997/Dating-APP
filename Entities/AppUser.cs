@@ -37,4 +37,5 @@ public class AppUser
     public ICollection<Message> MessagesReceived { get; set; } = [];
     public ICollection<UserHobby> UserHobbies { get; set; } = [];
     public ICollection<Post> Posts { get; set; } = [];
+    public ICollection<PostReaction> PostReactions { get; set; } = [];
 }

@@ -14,7 +14,39 @@ public class PostRepository(AppDbContext context) : IPostRepository
         await context.Posts
             .Include(p => p.Author).ThenInclude(a => a.Photos)
             .Include(p => p.PostPhotos).ThenInclude(pp => pp.Photo)
+            .Include(p => p.Reactions)
             .FirstOrDefaultAsync(p => p.Id == postId && p.DeletedUtc == null, ct);
+
+    public async Task<Post?> GetVisiblePostForViewerAsync(int postId, int viewerUserId, CancellationToken ct = default)
+    {
+        var post = await context.Posts
+            .Include(p => p.Author).ThenInclude(a => a.Photos)
+            .Include(p => p.PostPhotos).ThenInclude(pp => pp.Photo)
+            .Include(p => p.Reactions)
+            .FirstOrDefaultAsync(p => p.Id == postId && p.DeletedUtc == null, ct);
+        if (post == null)
+            return null;
+
+        var blockedEitherWay = await context.UserBlocks.AnyAsync(b =>
+            (b.BlockerId == viewerUserId && b.BlockedId == post.AuthorId) ||
+            (b.BlockerId == post.AuthorId && b.BlockedId == viewerUserId), ct);
+        if (blockedEitherWay)
+            return null;
+
+        if (post.Visibility == PostVisibility.Public || post.AuthorId == viewerUserId)
+            return post;
+
+        var viewerFollowsAuthor = await context.UserFollows.AnyAsync(f =>
+            f.FollowerId == viewerUserId && f.FollowingId == post.AuthorId, ct);
+        return viewerFollowsAuthor ? post : null;
+    }
+
+    public async Task<PostReaction?> GetReactionAsync(int postId, int userId, CancellationToken ct = default) =>
+        await context.PostReactions.FirstOrDefaultAsync(r => r.PostId == postId && r.UserId == userId, ct);
+
+    public void AddReaction(PostReaction reaction) => context.PostReactions.Add(reaction);
+
+    public void RemoveReaction(PostReaction reaction) => context.PostReactions.Remove(reaction);
 
     public async Task<IReadOnlyList<int>> GetOwnedPhotoIdsAsync(int userId, IReadOnlyCollection<int> photoIds, CancellationToken ct = default)
     {
@@ -39,6 +71,7 @@ public class PostRepository(AppDbContext context) : IPostRepository
         var query = context.Posts
             .Include(p => p.Author).ThenInclude(a => a.Photos)
             .Include(p => p.PostPhotos).ThenInclude(pp => pp.Photo)
+            .Include(p => p.Reactions)
             .Where(p => p.DeletedUtc == null)
             .Where(p => followingIds.Contains(p.AuthorId))
             .Where(p => !context.UserBlocks.Any(b =>
@@ -79,6 +112,7 @@ public class PostRepository(AppDbContext context) : IPostRepository
         var query = context.Posts
             .Include(p => p.Author).ThenInclude(a => a.Photos)
             .Include(p => p.PostPhotos).ThenInclude(pp => pp.Photo)
+            .Include(p => p.Reactions)
             .Where(p => p.DeletedUtc == null && p.AuthorId == author.Id)
             .Where(p => p.Visibility == PostVisibility.Public || p.AuthorId == viewerUserId || viewerFollowsAuthor)
             .OrderByDescending(p => p.CreatedUtc);
